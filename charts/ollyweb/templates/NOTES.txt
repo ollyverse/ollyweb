@@ -1,0 +1,15 @@
+ollyweb {{ .Chart.AppVersion }} is running as {{ include "ollyweb.image" . }}.
+{{- if .Values.ingress.enabled }}
+{{- range .Values.ingress.hosts }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ .host }}/
+{{- end }}
+{{- else }}
+
+Try it locally:
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "ollyweb.fullname" . }} 8080:{{ .Values.service.port }}
+  open http://localhost:8080/
+{{- end }}
+{{- if not .Values.imagePullSecrets }}
+
+Note: the image on ghcr.io is private; set imagePullSecrets if pods end up in ImagePullBackOff.
+{{- end }}

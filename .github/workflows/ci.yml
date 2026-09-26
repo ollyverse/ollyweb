@@ -26,3 +26,12 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm run build
+
+  chart:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: azure/setup-helm@v5
+      - run: helm lint --strict charts/ollyweb
+      - name: Render with every optional resource on
+        run: helm template ollyweb charts/ollyweb --set ingress.enabled=true --set 'imagePullSecrets[0].name=ghcr-pull' > /dev/null

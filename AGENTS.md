@@ -26,7 +26,8 @@ docker build -t ollyweb . && docker run --rm -p 8080:8080 ollyweb
 - `src/game/` — `maze.ts` (generation, BFS), `enemies.ts` (enemy kinds, roster, AI), `game.ts` (loop, input, render)
 - `src/lib/` — `sprites.ts` (pixel-art char maps + `drawPixels`), `sound.ts` (WebAudio blips), `storage.ts`
 - `deploy/nginx.conf`, `Dockerfile` — the runtime image
-- `.github/workflows/` — `ci.yml`, `image.yml` (push to ghcr.io on `v*` tags only), `pages.yml` (opt-in)
+- `charts/ollyweb/` — Helm chart; released as OCI to `oci://ghcr.io/ollyverse/charts/ollyweb`
+- `.github/workflows/` — `ci.yml`, `release.yml` (image + chart to ghcr.io on `v*` tags only), `pages.yml` (opt-in)
 - Deeper explanations: [docs/architecture.md](docs/architecture.md), [docs/game.md](docs/game.md)
 
 ## Rules
@@ -52,10 +53,13 @@ docker build -t ollyweb . && docker run --rm -p 8080:8080 ollyweb
 2. `npm run build` succeeds.
 3. For UI/game changes: look at it in a browser (desktop **and** a phone viewport), both `/` and `/sk/`.
 4. If you touched `Dockerfile` or `deploy/`: build and run the image, `curl` `/`, `/sk/`, `/sk` (relative redirect).
+5. If you touched `charts/`: `helm lint --strict charts/ollyweb` and `helm template … | kubeconform -strict`;
+   for bigger changes install it into a `kind` cluster (see docs/kubernetes.md).
+   Keep `version`/`appVersion` in `Chart.yaml` at `0.0.0-dev` — releases set them from the tag.
 
 ## Git
 
 - Branch `main` is always deployable; CI must be green.
 - Commit messages: imperative subject, short body with the why.
 - **Do not add `Co-Authored-By` or other AI attribution trailers** to commits or PRs.
-- Releases are git tags `vX.Y.Z` — only a human cuts them. See [docs/release.md](docs/release.md).
+- Releases are git tags `vX.Y.Z` (image + chart, same version) — only a human cuts them. See [docs/release.md](docs/release.md).

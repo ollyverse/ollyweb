@@ -1,6 +1,8 @@
-name: Container image
+name: Release
 
-# Release tags (v1.2.3) build and push to ghcr.io/<owner>/<repo> for the k8s deployment.
+# A release tag vX.Y.Z publishes, in this order:
+#   1. image  ghcr.io/<owner>/<repo>:X.Y.Z (+ X.Y, X, latest)
+#   2. chart  oci://ghcr.io/<owner>/charts/<repo> version X.Y.Z, appVersion X.Y.Z (runs image X.Y.Z)
 # Pull requests only build the image to prove the Dockerfile still works; nothing is pushed.
 on:
   push:
@@ -12,7 +14,7 @@ permissions:
   packages: write
 
 concurrency:
-  group: image-${{ github.ref }}
+  group: release-${{ github.ref }}
   cancel-in-progress: true
 
 env:
@@ -55,3 +57,23 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  chart:
+    # only after the image exists, so a published chart never points at a missing image
+    needs: image
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: azure/setup-helm@v5
+
+      - name: Package chart ${{ github.ref_name }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          helm lint --strict charts/ollyweb
+          helm package charts/ollyweb --version "$VERSION" --app-version "$VERSION"
+
+      - name: Push to ghcr.io (OCI)
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u "${{ github.actor }}" --password-stdin
+          helm push "ollyweb-${GITHUB_REF_NAME#v}.tgz" "oci://ghcr.io/${{ github.repository_owner }}/charts"

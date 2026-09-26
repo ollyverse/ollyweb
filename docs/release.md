@@ -1,12 +1,18 @@
 # Release process
 
-Releases are **git tags** `vMAJOR.MINOR.PATCH` ([semver](https://semver.org)). Pushing a tag builds the
-multi-arch image and pushes it to **ghcr.io**; Kubernetes then runs that exact version.
-Pushes to `main` never publish an image.
+Releases are **git tags** `vMAJOR.MINOR.PATCH` ([semver](https://semver.org)). Pushing a tag runs the
+**Release** workflow, which publishes to **ghcr.io**, in this order:
 
-| You push | Image tags in `ghcr.io/ollyverse/ollyweb` |
-|---|---|
-| `v1.4.2` | `1.4.2`, `1.4`, `1`, `latest` |
+1. the multi-arch **image**,
+2. the **Helm chart** as an OCI artifact — only if the image succeeded.
+
+Pushes to `main` never publish anything.
+
+| You push | Image `ghcr.io/ollyverse/ollyweb` | Chart `oci://ghcr.io/ollyverse/charts/ollyweb` |
+|---|---|---|
+| `v1.4.2` | `1.4.2`, `1.4`, `1`, `latest` | version `1.4.2`, appVersion `1.4.2` |
+
+Chart and app share one version, so "deploy 1.4.2" means the chart 1.4.2, which runs image 1.4.2.
 
 Which number to bump: **patch** for fixes and copy tweaks, **minor** for new features (a section, an enemy,
 a language), **major** for something visitors would call a new site.
@@ -38,14 +44,15 @@ git tag -a "v$VERSION" -m "v$VERSION"
 git push origin "v$VERSION"
 ```
 
-## 3. Watch the image build
+## 3. Watch the release
 
 ```sh
-gh run watch "$(gh run list --workflow image.yml --limit 1 --json databaseId --jq '.[0].databaseId')" --exit-status
+gh run watch "$(gh run list --workflow release.yml --limit 1 --json databaseId --jq '.[0].databaseId')" --exit-status
 ```
 
-Or: GitHub → Actions → **Container image**. When it's green the image is at
-`ghcr.io/ollyverse/ollyweb:$VERSION` (org → Packages → ollyweb).
+Or: GitHub → Actions → **Release** (jobs `image`, then `chart`). When it's green you have
+`ghcr.io/ollyverse/ollyweb:$VERSION` and `oci://ghcr.io/ollyverse/charts/ollyweb` version `$VERSION`
+(org → Packages).
 
 ## 4. (Optional) GitHub release notes
 
@@ -53,46 +60,46 @@ Or: GitHub → Actions → **Container image**. When it's green the image is at
 gh release create "v$VERSION" --generate-notes
 ```
 
-## 5. Verify the published image
+## 5. Verify what was published
 
 ```sh
-echo "$GHCR_TOKEN" | docker login ghcr.io -u <github-user> --password-stdin   # token with read:packages
-docker pull ghcr.io/ollyverse/ollyweb:$VERSION
-docker run --rm -p 8080:8080 ghcr.io/ollyverse/ollyweb:$VERSION
-curl -fsS localhost:8080/ >/dev/null && echo OK
+echo "$GHCR_TOKEN" | docker login ghcr.io -u <github-user> --password-stdin          # token with read:packages
+echo "$GHCR_TOKEN" | helm registry login ghcr.io -u <github-user> --password-stdin
+
+docker run --rm -p 8080:8080 ghcr.io/ollyverse/ollyweb:$VERSION                       # open http://localhost:8080
+helm show chart oci://ghcr.io/ollyverse/charts/ollyweb --version $VERSION             # version + appVersion = $VERSION
+helm template ollyweb oci://ghcr.io/ollyverse/charts/ollyweb --version $VERSION | grep image:
 ```
 
 ## 6. Deploy to Kubernetes
 
-The cluster manifests are not in this repo; adjust `NS` / names to yours.
-
-One-time: a pull secret, because the package is private.
+One-time per namespace (the packages are private):
 
 ```sh
 NS=ollyverse
+kubectl create namespace $NS
 kubectl -n $NS create secret docker-registry ghcr-pull \
-  --docker-server=ghcr.io --docker-username=<github-user> --docker-password=<token with read:packages>
-# reference it from the Deployment: spec.template.spec.imagePullSecrets: [{ name: ghcr-pull }]
+  --docker-server=ghcr.io --docker-username=<github-user> --docker-password="$GHCR_TOKEN"
 ```
 
-Container facts for the manifest: port **8080**, non-root (uid 101), `GET /` → 200 for liveness/readiness,
-no env vars or volumes needed.
-
-Roll out the new version (pin the exact tag, not `latest`):
+Every release:
 
 ```sh
-kubectl -n $NS set image deployment/ollyweb ollyweb=ghcr.io/ollyverse/ollyweb:$VERSION
+helm upgrade --install ollyweb oci://ghcr.io/ollyverse/charts/ollyweb \
+  --version "$VERSION" -n $NS -f values-prod.yaml --wait
 kubectl -n $NS rollout status deployment/ollyweb
 ```
 
-(If the deployment is managed by GitOps / Helm, change the image tag there instead.)
+`values-prod.yaml` (pull secret, ingress host, TLS) and every chart option: [kubernetes.md](kubernetes.md).
+With GitOps (Argo CD / Flux) point the app at the OCI chart and bump `version` there instead.
 
 ## Rollback
 
 ```sh
-kubectl -n $NS rollout undo deployment/ollyweb
-# or pin the previous version explicitly
-kubectl -n $NS set image deployment/ollyweb ollyweb=ghcr.io/ollyverse/ollyweb:<previous-version>
+helm -n $NS history ollyweb
+helm -n $NS rollback ollyweb               # previous revision
+# or install an older release explicitly
+helm upgrade --install ollyweb oci://ghcr.io/ollyverse/charts/ollyweb --version <previous> -n $NS -f values-prod.yaml --wait
 ```
 
 Then fix forward on `main` and cut a new **patch** release.
@@ -103,9 +110,11 @@ Then fix forward on `main` and cut a new **patch** release.
   ```sh
   git tag -d "v$VERSION" && git push origin --delete "v$VERSION"
   ```
-  The already pushed image stays in ghcr.io — delete that version in Packages, or simply never reuse the
-  number and release the next patch instead (preferred).
-- **Build failed:** fix on `main`, then release the next patch version. Don't move an existing tag.
+  The already pushed image/chart stay in ghcr.io — delete those versions in Packages, or simply never reuse
+  the number and release the next patch instead (preferred).
+- **Image job failed:** nothing was published (the chart waits for the image). Fix on `main`, release the next patch.
+- **Chart job failed after the image was pushed:** fix, then either re-run the failed job (Actions → Re-run failed
+  jobs) or release the next patch. Don't move an existing tag.
 
 ## Hotfix
 

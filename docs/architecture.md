@@ -6,8 +6,10 @@
 flowchart LR
   src["src/ (Astro + TS)"] -->|npm run build| dist["dist/ static HTML/CSS/JS"]
   dist -->|Dockerfile| img["nginx image :8080"]
-  img -->|git tag vX.Y.Z → image.yml| ghcr["ghcr.io/ollyverse/ollyweb:X.Y.Z"]
-  ghcr -->|imagePullSecret| k8s["Kubernetes → ollyverse.com"]
+  img -->|"git tag vX.Y.Z → release.yml"| ghcr["ghcr.io/ollyverse/ollyweb:X.Y.Z"]
+  chart["charts/ollyweb"] -->|"same tag, after the image"| oci["oci://ghcr.io/ollyverse/charts/ollyweb X.Y.Z"]
+  oci -->|helm upgrade --install| k8s["Kubernetes → ollyverse.com"]
+  ghcr -->|imagePullSecret| k8s
 ```
 
 - **Astro** renders every page to static HTML at build time. There is no server code and no API.
@@ -27,6 +29,7 @@ src/
   styles/global.css colour tokens, fluid root font size, shared classes
 public/             favicon
 deploy/nginx.conf   runtime web server config
+charts/ollyweb/     Helm chart (released to oci://ghcr.io/ollyverse/charts)
 ```
 
 ## Pages and languages
@@ -89,3 +92,10 @@ flowchart TD
 - `deploy/nginx.conf`: `try_files $uri $uri/ $uri.html =404`, relative redirects (`/sk` → `/sk/` without the
   internal port), `expires max` for hashed `/_astro/*` assets, gzip, a few security headers, no server tokens.
 - Images are multi-arch (`linux/amd64`, `linux/arm64`). See [release.md](release.md) for how they are published.
+
+## Kubernetes
+
+`charts/ollyweb` is a small Helm chart (Deployment, Service, optional Ingress, PodDisruptionBudget) with a
+locked-down pod: non-root, read-only root filesystem with an `emptyDir` for nginx's `/tmp`, no capabilities,
+no service-account token. It is released as an OCI artifact with the same version as the image.
+Details: [kubernetes.md](kubernetes.md).

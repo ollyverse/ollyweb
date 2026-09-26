@@ -1,7 +1,7 @@
 # ollyverse.com
 
 [![CI](https://github.com/ollyverse/ollyweb/actions/workflows/ci.yml/badge.svg)](https://github.com/ollyverse/ollyweb/actions/workflows/ci.yml)
-[![Container image](https://github.com/ollyverse/ollyweb/actions/workflows/image.yml/badge.svg)](https://github.com/ollyverse/ollyweb/actions/workflows/image.yml)
+[![Release](https://github.com/ollyverse/ollyweb/actions/workflows/release.yml/badge.svg)](https://github.com/ollyverse/ollyweb/actions/workflows/release.yml)
 
 Landing page for the **Ollyverse** — a tiny universe run by Olly, one very fluffy, very black Pomeranian.
 The page is a retro arcade: pixel-art Olly you can boop, and **Operation: Bone**, a maze game where Olly
@@ -13,7 +13,7 @@ English and Slovak.
 ## Docs
 
 - [Architecture](docs/architecture.md) · [Development](docs/development.md) · [Game design](docs/game.md)
-- [CI/CD](docs/ci-cd.md) · [**Release process**](docs/release.md)
+- [Kubernetes / Helm](docs/kubernetes.md) · [CI/CD](docs/ci-cd.md) · [**Release process**](docs/release.md)
 - AI agents: [AGENTS.md](AGENTS.md)
 
 ## Quick start
@@ -99,12 +99,23 @@ In Kubernetes, pin the exact version (`ghcr.io/ollyverse/ollyweb:1.2.3`) rather 
 pods an `imagePullSecret` for ghcr.io (a token with `read:packages`) since the package is private.
 The container listens on **8080**; `/` answers `200` and works for liveness/readiness probes.
 
+## Helm chart
+
+`charts/ollyweb` is released together with the image, as an OCI artifact in ghcr.io:
+
+```sh
+helm upgrade --install ollyweb oci://ghcr.io/ollyverse/charts/ollyweb --version 1.2.3 \
+  -n ollyverse --set 'imagePullSecrets[0].name=ghcr-pull' --wait
+```
+
+Chart `1.2.3` runs image `1.2.3`. Values, ingress/TLS, rollback: [docs/kubernetes.md](docs/kubernetes.md).
+
 ## CI/CD (GitHub Actions)
 
 | Workflow | Trigger | Does |
 |---|---|---|
-| `ci.yml` | push to `main`, PRs | `npm ci`, `astro check`, `astro build` |
-| `image.yml` | `v*` tags, PRs | builds the multi-arch image; pushes to ghcr.io only for `v*` tags |
+| `ci.yml` | push to `main`, PRs | `npm ci`, `astro check`, `astro build`, `helm lint` |
+| `release.yml` | `v*` tags, PRs | builds the multi-arch image; for `v*` tags pushes it and then the Helm chart to ghcr.io |
 | `pages.yml` | push to `main`, manual | deploys `dist/` to GitHub Pages — **off by default**, see below |
 
 **Dependabot** (`.github/dependabot.yml`) checks daily and opens PRs for npm packages

@@ -1,0 +1,50 @@
+replicaCount: 2
+
+image:
+  repository: ghcr.io/ollyverse/ollyweb
+  # Defaults to the chart's appVersion, i.e. chart 1.4.2 runs image 1.4.2.
+  tag: ""
+  pullPolicy: IfNotPresent
+
+# The image is private on ghcr.io, so pods need a pull secret, e.g. [{ name: ghcr-pull }].
+imagePullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+podAnnotations: {}
+podLabels: {}
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: ollyverse.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+  #  - secretName: ollyverse-com-tls
+  #    hosts: [ollyverse.com]
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 16Mi
+  limits:
+    memory: 64Mi
+
+# Keeps at least one pod up during node drains (only rendered when replicaCount > 1).
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+topologySpreadConstraints: []
