@@ -115,7 +115,7 @@ Chart `1.2.3` runs image `1.2.3`. Values, ingress/TLS, rollback: [docs/kubernete
 | Workflow | Trigger | Does |
 |---|---|---|
 | `ci.yml` | push to `main`, PRs | `npm ci`, `astro check`, `astro build`, `helm lint` |
-| `release.yml` | `v*` tags, PRs | builds the multi-arch image; for `v*` tags pushes it and then the Helm chart to ghcr.io |
+| `release.yml` | `v*` tags, PRs | builds the multi-arch image; for `v*` tags pushes it, then the Helm chart to ghcr.io, then creates the GitHub Release |
 | `pages.yml` | push to `main`, manual | deploys `dist/` to GitHub Pages — **off by default**, see below |
 
 **Dependabot** (`.github/dependabot.yml`) checks daily and opens PRs for npm packages

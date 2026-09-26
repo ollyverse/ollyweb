@@ -4,7 +4,10 @@ Releases are **git tags** `vMAJOR.MINOR.PATCH` ([semver](https://semver.org)). P
 **Release** workflow, which publishes to **ghcr.io**, in this order:
 
 1. the multi-arch **image**,
-2. the **Helm chart** as an OCI artifact — only if the image succeeded.
+2. the **Helm chart** as an OCI artifact — only if the image succeeded,
+3. the **GitHub Release** page for the tag — only if both exist; it lists the image and chart and adds
+   auto-generated notes (merged PRs / commits since the previous tag). Tags with a suffix
+   (`v1.3.0-rc.1`) become pre-releases.
 
 Pushes to `main` never publish anything.
 
@@ -50,15 +53,17 @@ git push origin "v$VERSION"
 gh run watch "$(gh run list --workflow release.yml --limit 1 --json databaseId --jq '.[0].databaseId')" --exit-status
 ```
 
-Or: GitHub → Actions → **Release** (jobs `image`, then `chart`). When it's green you have
-`ghcr.io/ollyverse/ollyweb:$VERSION` and `oci://ghcr.io/ollyverse/charts/ollyweb` version `$VERSION`
-(org → Packages).
+Or: GitHub → Actions → **Release** (jobs `image` → `chart` → `github-release`). When it's green you have
+`ghcr.io/ollyverse/ollyweb:$VERSION`, `oci://ghcr.io/ollyverse/charts/ollyweb` version `$VERSION`
+(org → Packages) and the release page:
 
-## 4. (Optional) GitHub release notes
+## 4. Check the release page
 
 ```sh
-gh release create "v$VERSION" --generate-notes
+gh release view "v$VERSION" --web
 ```
+
+Edit the notes there if you want a human summary on top.
 
 ## 5. Verify what was published
 
@@ -115,6 +120,8 @@ Then fix forward on `main` and cut a new **patch** release.
 - **Image job failed:** nothing was published (the chart waits for the image). Fix on `main`, release the next patch.
 - **Chart job failed after the image was pushed:** fix, then either re-run the failed job (Actions → Re-run failed
   jobs) or release the next patch. Don't move an existing tag.
+- **Only `github-release` failed:** re-run that job, or create the page by hand:
+  `gh release create "v$VERSION" --verify-tag --generate-notes`.
 
 ## Hotfix
 

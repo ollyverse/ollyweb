@@ -77,3 +77,41 @@ jobs:
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u "${{ github.actor }}" --password-stdin
           helm push "ollyweb-${GITHUB_REF_NAME#v}.tgz" "oci://ghcr.io/${{ github.repository_owner }}/charts"
+
+  github-release:
+    # the release page is created last, once the image and the chart it lists really exist
+    needs: [image, chart]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Create GitHub release ${{ github.ref_name }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          IMAGE: ghcr.io/${{ github.repository }}
+          CHART: oci://ghcr.io/${{ github.repository_owner }}/charts/ollyweb
+        run: |
+          VERSION="${TAG#v}"
+          cat > notes.md <<'NOTES'
+          ## Artifacts
+
+          | | |
+          |---|---|
+          | Image | `__IMAGE__:__VERSION__` |
+          | Helm chart | `__CHART__` version `__VERSION__` |
+
+          ```sh
+          helm upgrade --install ollyweb __CHART__ --version __VERSION__ \
+            -n ollyverse -f values-prod.yaml --wait
+          ```
+          NOTES
+          sed -i "s|__IMAGE__|$IMAGE|g; s|__CHART__|$CHART|g; s|__VERSION__|$VERSION|g" notes.md
+
+          # v1.2.3-rc.1 and friends are marked as pre-releases
+          PRE=""
+          case "$VERSION" in *-*) PRE="--prerelease" ;; esac
+
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --title "$TAG" \
+            --notes-file notes.md --generate-notes $PRE

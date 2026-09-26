@@ -5,7 +5,7 @@ All automation is GitHub Actions in `.github/workflows/`.
 | Workflow | Runs on | Steps | Publishes |
 |---|---|---|---|
 | `ci.yml` | push to `main`, every PR | site: `npm ci` → `npm run check` → `npm run build`; chart: `helm lint --strict` + `helm template` | nothing |
-| `release.yml` | PRs, tags `v*` | job `image`: multi-arch `docker build` (amd64 + arm64, GHA cache); job `chart`: `helm package` + `helm push` (tags only, after `image`) | **only for `v*` tags** → image `ghcr.io/ollyverse/ollyweb`, chart `oci://ghcr.io/ollyverse/charts/ollyweb` |
+| `release.yml` | PRs, tags `v*` | job `image`: multi-arch `docker build` (amd64 + arm64, GHA cache); job `chart`: `helm package` + `helm push` (tags only, after `image`); job `github-release`: release page with notes (tags only, after both) | **only for `v*` tags** → image `ghcr.io/ollyverse/ollyweb`, chart `oci://ghcr.io/ollyverse/charts/ollyweb`, GitHub Release |
 | `pages.yml` | push to `main`, manual | build + deploy `dist/` to GitHub Pages | only if repo variable `PAGES_ENABLED=true` |
 
 Notes:
@@ -13,6 +13,7 @@ Notes:
 - `release.yml` on a PR builds the image as `pr-<n>` to prove the `Dockerfile` still works (e.g. for Dependabot
   base-image bumps) and does not log in or push.
 - It logs in to ghcr.io (docker and helm) with the built-in `GITHUB_TOKEN` (`packages: write`); no extra secrets.
+  Only the `github-release` job gets `contents: write`, to create the release page.
 - The chart gets `version` and `appVersion` from the tag (`v1.4.2` → `1.4.2`); `Chart.yaml` stays at `0.0.0-dev`.
 - Tag → image tags mapping is in [release.md](release.md).
 - Pushes to `main` never produce an image or chart; Kubernetes only ever sees released versions.
