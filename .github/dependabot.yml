@@ -13,6 +13,10 @@ updates:
         patterns: ["astro", "@astrojs/*"]
       dev-tools:
         dependency-type: development
+    ignore:
+      # @astrojs/check pins its TypeScript peer range; bump TS together with it by hand
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: /
@@ -32,3 +36,10 @@ updates:
       day: monday
     commit-message:
       prefix: image
+    ignore:
+      # stay on the Node LTS line that .nvmrc uses; move both together by hand
+      - dependency-name: node
+        update-types: ["version-update:semver-major"]
+      # odd nginx minors (1.31, 1.33, …) are mainline; take patches, jump stable lines by hand
+      - dependency-name: nginxinc/nginx-unprivileged
+        update-types: ["version-update:semver-minor"]
