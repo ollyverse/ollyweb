@@ -2,9 +2,10 @@
 // facing right; `flip` mirrors him.
 const PAL: Record<string, string> = {
   k: '#221c30', // fur
-  g: '#463c61', // face, lit fur
+  d: '#2d2540', // fur, lit
+  g: '#463c61', // plume, face
   m: '#52476e', // muzzle
-  h: '#8f7fc0', // fluff tips
+  h: '#8f7fc0', // fluff tips, mane
   e: '#05030a', // eye
   w: '#ffffff', // eye shine
   n: '#000000', // nose
@@ -13,29 +14,38 @@ const PAL: Record<string, string> = {
 };
 const OUTLINE = '#fff3fb';
 
-// cols 0-8 of rows 0-3 hold the tail plume and come from TAIL instead
+// cols 0-9 of rows 0-3 hold the tail plume and come from TAIL instead
 const OLLY = [
-  '..........k..k..',
-  '.........kpkkpk.',
-  '.........hkkkkkh',
-  '.........kkgewmm',
-  '..hgkh..kkggeemn',
-  '.kkkhkkkkkgpggt.',
-  'hkkkkkkkkkkghgh.',
-  'hkkkkkkkkkkkh...',
-  'hkkkkkkkkkkh....',
-  '.hkhkkhkkkh.....',
+  '.............h....h...',
+  '............kpk..kpk..',
+  '...........kkppkkppkk.',
+  '..........kdddddddddk.',
+  'hgdkgkdgh.kddddddddgk.',
+  '.hgdkdkdgkkddddewggmmm',
+  '..hgdkdkdkhddddeeggmmn',
+  '...hdkkkkkhdgppggmmmt.',
+  '..kkkkkkkkdhdggggmmt..',
+  '.kkkkkkkkkkdhgdghh....',
+  'hkkkkkkkkkkkdhdhgh....',
+  'hkkkkkkkkkkkkdhh......',
+  'hdkkkkkkkkkkkkh.......',
+  '.hdkkkkkkkkkkdh.......',
+  '..hdhdkkkkhdhdh.......',
 ];
-const EYES_ROW = 3;
-const LEGS = ['.kg.kg..kg.kg...', '..kg.kg..kg.kg..'];
+const TAIL_W = 10;
+const EYES_ROW = 5;
 const TAIL = [
-  ['.hhh.....', 'hgggh....', 'hgkgh....', '.hgkh....'],
-  ['..hhh....', '.hgggh...', '.hgkgh...', '..hgkh...'],
+  ['...hhh....', '..hgggh...', '.hgggggh..', 'hggdgdggh.'],
+  ['....hhh...', '...hgggh..', '..hgggggh.', '.hggdgdggh'],
+];
+const LEGS = [
+  ['...kd.kd...kd.kd......', '...kg.kg...kg.kg......'],
+  ['..kd..kd..kd..kd......', '..kg..kg..kg..kg......'],
 ];
 const BONE = ['ww.....ww', 'wwwwwwwww', '.wwwwwww.', 'wwwwwwwww', 'ww.....ww'];
 
 /** Sprite size in pixels, excluding the 1px outline. */
-export const OLLY_SIZE = { w: 16, h: 11 };
+export const OLLY_SIZE = { w: 22, h: 17 };
 export const BONE_SIZE = { w: 9, h: 5 };
 
 export interface OllyPose { flip?: boolean; wag?: number; step?: number; blink?: boolean }
@@ -45,8 +55,8 @@ const overlap = (s: number) => (s < 6 ? 0.5 : 0);
 
 export function drawOlly(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, { flip = false, wag = 0, step = 0, blink = false }: OllyPose = {}) {
   const rows = OLLY.concat(LEGS[step]).map((row, i) => {
-    if (i < TAIL[wag].length) row = TAIL[wag][i] + row.slice(9);
-    return blink && i === EYES_ROW ? row.replace(/[ew]/g, 'g') : row;
+    if (i < TAIL[wag].length) row = TAIL[wag][i] + row.slice(TAIL_W);
+    return blink && i === EYES_ROW ? row.replace(/[ew]/g, 'd') : row;
   });
   const pixels: [number, number, string][] = [];
   rows.forEach((row, cy) => [...row].forEach((ch, cx) => {

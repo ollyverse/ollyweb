@@ -274,7 +274,7 @@ export function mountMazeGame(root: HTMLElement) {
     // olly
     const ease = olly.t * (2 - olly.t);
     const ox = (olly.fx + (olly.x - olly.fx) * ease) * c, oy = (olly.fy + (olly.y - olly.fy) * ease) * c;
-    const os = c / 17, hop = olly.t < 1 ? -Math.sin(olly.t * Math.PI) * c * 0.1 : 0;
+    const os = c / 22, hop = olly.t < 1 ? -Math.sin(olly.t * Math.PI) * c * 0.1 : 0;
     drawOlly(ctx, ox + (c - OLLY_SIZE.w * os) / 2, oy + (c - OLLY_SIZE.h * os) / 2 + hop, os, olly);
 
     // fog of war: remembered cells stay dim, a soft light follows Olly
