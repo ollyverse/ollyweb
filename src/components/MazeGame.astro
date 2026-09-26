@@ -1,4 +1,7 @@
 ---
+import { useText } from '../i18n/ui';
+
+const T = useText(Astro.currentLocale).game;
 const dirs = [
   { dir: 'up', label: '▲' },
   { dir: 'left', label: '◀' },
@@ -7,41 +10,41 @@ const dirs = [
 ];
 ---
 <section class="game-wrap" id="play">
-  <h2 class="section-title">OPERATION: BONE</h2>
-  <p class="section-sub">Every planet is a maze. Every maze has a bone. Every bone is Olly's.</p>
+  <h2 class="section-title">{T.title}</h2>
+  <p class="section-sub">{T.sub}</p>
 
   <div class="cabinet" data-maze-game>
     <div class="hud">
-      <div><small>PLANET</small><b data-ref="level">1</b></div>
-      <div><small>TIME</small><b data-ref="time">0.0</b></div>
-      <div><small>BONES</small><b data-ref="bones">0</b></div>
-      <div><small>SNIFF</small><b data-ref="sniff">READY</b><span class="meter" data-ref="sniff-meter"></span></div>
+      <div><small>{T.hud.planet}</small><b data-ref="level">1</b></div>
+      <div><small>{T.hud.time}</small><b data-ref="time">0.0</b></div>
+      <div><small>{T.hud.bones}</small><b data-ref="bones">0</b></div>
+      <div><small>{T.hud.sniff}</small><b data-ref="sniff">{T.hud.ready}</b><span class="meter" data-ref="sniff-meter"></span></div>
     </div>
 
     <div class="screen">
       <canvas data-ref="canvas"></canvas>
       <div class="overlay" data-ref="overlay">
-        <h3 data-ref="overlay-title">FIND THE BONE</h3>
-        <p data-ref="overlay-text">Guide Olly through the maze.<br />Stuck? <b>Sniff</b> to follow the smell.</p>
-        <button class="btn" data-ref="overlay-button">▶ LET'S GO</button>
+        <h3 data-ref="overlay-title">{T.introTitle}</h3>
+        <p data-ref="overlay-text" set:html={T.introText} />
+        <button class="btn" data-ref="overlay-button">{T.introButton}</button>
       </div>
     </div>
 
-    <div class="thought" data-ref="thought">…bone?</div>
+    <div class="thought" data-ref="thought">{T.firstThought}</div>
 
     <div class="pad">
       {dirs.map(d => <button class={d.dir} data-dir={d.dir} aria-label={d.dir}>{d.label}</button>)}
-      <button class="sniff" data-sniff aria-label="Sniff">SNIFF</button>
+      <button class="sniff" data-sniff>{T.sniffButton}</button>
     </div>
-    <div class="keys"><kbd>←↑↓→</kbd> / <kbd>WASD</kbd> move &nbsp; <kbd>SPACE</kbd> sniff &nbsp; <kbd>ENTER</kbd> start</div>
+    <div class="keys" set:html={T.keys} />
   </div>
 </section>
 
 <style>
-  .game-wrap { padding: 4.5rem 1rem 2.5rem; }
+  .game-wrap { padding: 1.5rem 1rem 2.5rem; }
   .cabinet {
-    /* keep the whole cabinet (maze + HUD) inside one screen height */
-    max-width: min(44rem, max(20rem, calc(100svh - 11rem))); margin: 0 auto; background: var(--panel); padding: 0.875rem;
+    /* keep header, title and the whole cabinet (maze + HUD) inside one screen height */
+    max-width: min(44rem, max(20rem, calc(100svh - 24rem))); margin: 0 auto; background: var(--panel); padding: 0.875rem;
     border: 0.25rem solid var(--ink); box-shadow: 0.5rem 0.5rem 0 var(--lilac), -0.5rem -0.5rem 0 var(--pink);
   }
   .hud { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.375rem; font-family: var(--pixel); font-size: 0.8125rem; margin-bottom: 0.625rem; }
@@ -76,7 +79,7 @@ const dirs = [
   .pad .down { grid-column: 2; grid-row: 2; }
   .pad .right { grid-column: 3; grid-row: 2; }
   .keys { text-align: center; font-family: var(--pixel); font-size: 0.6875rem; color: var(--muted); margin-top: 0.875rem; line-height: 2; }
-  kbd { color: var(--bg); background: var(--muted); padding: 0.125rem 0.3125rem; font: inherit; }
+  .keys :global(kbd) { color: var(--bg); background: var(--muted); padding: 0.125rem 0.3125rem; font: inherit; }
   @media (pointer: coarse), (max-width: 700px) {
     .pad { display: grid; }
     .keys { display: none; }

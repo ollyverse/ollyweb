@@ -13,7 +13,7 @@
 }
 * { box-sizing: border-box; }
 /* everything is sized in rem, so the whole page scales up on big screens */
-html { scroll-behavior: smooth; font-size: clamp(16px, 0.45vw + 10px, 30px); }
+html { scroll-behavior: smooth; font-size: clamp(16px, 0.65vw + 8px, 44px); }
 body {
   margin: 0;
   background: radial-gradient(ellipse at 50% -10%, #4a2a7a 0%, var(--bg) 45%, var(--bg-deep) 100%) fixed;

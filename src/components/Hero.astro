@@ -1,27 +1,29 @@
 ---
+import { useText } from '../i18n/ui';
+
+const T = useText(Astro.currentLocale).hero;
 const letters = [...'OLLYVERSE'];
 ---
 <section class="hero">
   <div>
-    <div class="kicker">✦ WELCOME TO THE ✦</div>
+    <div class="kicker">{T.kicker}</div>
     <h1 aria-label="Ollyverse">{letters.map(l => <span class="l">{l}</span>)}</h1>
-    <p class="sub">A tiny universe run by <b>one very fluffy, very black Pomeranian</b>.<br />He lost his bone. Again. Somewhere between planets.</p>
+    <p class="sub" set:html={T.sub} />
 
-    <div class="olly-stage" id="hero-olly" title="Boop the dog">
-      <div class="bubble" id="hero-bubble">WOOF!</div>
-      <canvas id="hero-canvas" width="250" height="180"></canvas>
+    <div class="olly-stage" id="hero-olly" title={T.boop}>
+      <div class="bubble" id="hero-bubble">{T.barks[0]}</div>
+      <canvas id="hero-canvas" width="180" height="130"></canvas>
     </div>
 
-    <a class="cta" href="#play">▶ PRESS START</a>
-    <span class="tiny">(psst — boop Olly first)</span>
+    <a class="cta" href="#play">{T.cta}</a>
+    <span class="tiny">{T.tiny}</span>
   </div>
 </section>
 
 <style>
   .hero {
-    min-height: calc(100svh - 3.75rem);
     display: grid; place-items: center; text-align: center;
-    padding: 1.5rem 1rem 3rem;
+    padding: 1rem 1rem 1.5rem;
   }
   .kicker { font-family: var(--pixel); font-size: 0.6875rem; color: var(--lilac); letter-spacing: 0.1875rem; }
   h1 {
@@ -34,10 +36,10 @@ const letters = [...'OLLYVERSE'];
   .l:nth-child(even) { color: var(--pink); }
   @keyframes bob { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-0.625rem) rotate(3deg); } }
   .sub { max-width: 33.75rem; margin: 0 auto; font-size: clamp(1rem, 2.2vw, 1.25rem); color: var(--muted); line-height: 1.5; }
-  .sub b { color: var(--ink); }
+  .sub :global(b) { color: var(--ink); }
 
-  .olly-stage { position: relative; width: 18.75rem; margin: 1.75rem auto 0.5rem; cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; }
-  .olly-stage canvas { width: 18.75rem; height: 13.5rem; image-rendering: pixelated; display: block; animation: hover 3s ease-in-out infinite; }
+  .olly-stage { position: relative; width: 18rem; margin: 1.75rem auto 0.5rem; cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; }
+  .olly-stage canvas { width: 18rem; height: 13rem; image-rendering: pixelated; display: block; animation: hover 3s ease-in-out infinite; }
   .olly-stage::after { /* planet under Olly */
     content: ""; position: absolute; left: 50%; bottom: -1.375rem; width: 18.75rem; height: 2.75rem; transform: translateX(-50%);
     background: radial-gradient(ellipse at center, #b98cff 0%, #6a47b8 55%, transparent 72%); z-index: -1;
@@ -61,6 +63,11 @@ const letters = [...'OLLYVERSE'];
   @keyframes blink { 50% { filter: brightness(1.25); } }
   .tiny { display: block; margin-top: 0.875rem; font-size: 0.8125rem; color: var(--muted); opacity: .7; }
 
+  /* side by side with the game (see pages/index.astro): the game is right there, no need to scroll */
+  @media (min-width: 1100px) {
+    h1 { font-size: min(5vw, 9rem); }
+    .cta, .tiny { display: none; }
+  }
   @media (prefers-reduced-motion: reduce) {
     .l, .olly-stage canvas, .cta { animation: none; }
   }
@@ -69,8 +76,9 @@ const letters = [...'OLLYVERSE'];
 <script>
   import { drawOlly } from '../lib/sprites';
   import { sfx } from '../lib/sound';
+  import { pageText } from '../i18n/ui';
 
-  const WORDS = ['WOOF!', 'BORK!', 'BONE??', 'HI HUMAN', 'AWOOO!', 'SNACK?', '*sniff*'];
+  const WORDS = pageText().hero.barks;
   const canvas = document.getElementById('hero-canvas') as HTMLCanvasElement;
   const ctx = canvas.getContext('2d')!;
   const bubble = document.getElementById('hero-bubble')!;

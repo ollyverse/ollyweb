@@ -2,7 +2,8 @@ import { store } from '../lib/storage';
 import { sfx } from '../lib/sound';
 import { drawOlly, drawBone, OLLY_SIZE, BONE_SIZE } from '../lib/sprites';
 import { generateMaze, isWall, openNeighbours, bfs, pathBetween, DIRS, type Dir, type Maze, type Point } from './maze';
-import { THOUGHTS, PRAISE, planetName, pick } from './content';
+import { planetName, pick } from './content';
+import { pageText } from '../i18n/ui';
 
 const SPEED = 11;        // cells per second
 const SNIFF_COOLDOWN = 6; // seconds
@@ -21,6 +22,8 @@ const KEYS: Record<string, Dir> = {
 
 /** Wires up the maze game inside `root`; elements are found via `data-ref`. */
 export function mountMazeGame(root: HTMLElement) {
+  const T = pageText().game;
+  const planet = (n: number) => planetName(T.planets, n);
   const ref = <T extends HTMLElement>(name: string) => root.querySelector<T>(`[data-ref="${name}"]`)!;
   const canvas = ref<HTMLCanvasElement>('canvas');
   const ctx = canvas.getContext('2d')!;
@@ -85,7 +88,7 @@ export function mountMazeGame(root: HTMLElement) {
     }
     olly.fx = olly.x; olly.fy = olly.y;
     olly.x += dx; olly.y += dy; olly.t = 0;
-    if (dx) olly.flip = dx > 0; // keep the tail trailing behind him
+    if (dx) olly.flip = dx < 0;
     timing = true;
     idle = 0;
   }
@@ -118,11 +121,11 @@ export function mountMazeGame(root: HTMLElement) {
     const record = best == null || time < best;
     if (record) store.set(`olly.best.${level}`, time);
     const text =
-      `Bone found on <b>${planetName(level)}</b> in <b>${time.toFixed(1)}s</b>` +
-      (record ? '<br>✦ NEW PLANET RECORD ✦' : `<br>Record: ${best.toFixed(1)}s`) +
-      `<br><br>Next stop: <b>${planetName(level + 1)}</b>` +
-      (level === 1 ? '<br>(the lights are off there… use your nose)' : '');
-    setTimeout(() => showOverlay(pick(PRAISE), text, '▶ NEXT PLANET'), 900);
+      T.found(planet(level), time.toFixed(1)) +
+      '<br>' + (record ? T.record : T.best(best.toFixed(1))) +
+      '<br><br>' + T.next(planet(level + 1)) +
+      (level === 1 ? '<br>' + T.darkAhead : '');
+    setTimeout(() => showOverlay(pick(T.praise), text, T.nextButton), 900);
   }
 
   function sniff() {
@@ -131,7 +134,7 @@ export function mountMazeGame(root: HTMLElement) {
     sniffPath = pathBetween(maze, olly, bone).slice(0, 15);
     sniffT = SNIFF_SHOW;
     sniffCd = SNIFF_COOLDOWN;
-    say('*SNIIIFF* …that way!');
+    say(T.sniffing);
   }
 
   function showOverlay(title: string, html: string, button: string) {
@@ -146,7 +149,7 @@ export function mountMazeGame(root: HTMLElement) {
     startLevel();
     ui.overlay.hidden = true;
     state = 'play';
-    say(fogOn ? "It's dark here. Good thing I have a nose." : `Welcome to ${planetName(level)}!`);
+    say(fogOn ? T.dark : T.welcome(planet(level)));
     sfx.woof();
   }
 
@@ -214,7 +217,7 @@ export function mountMazeGame(root: HTMLElement) {
     if (timing) { time += dt; ui.time.textContent = time.toFixed(1); }
     sniffCd = Math.max(0, sniffCd - dt);
     sniffT = Math.max(0, sniffT - dt);
-    ui.sniff.textContent = sniffCd ? `${Math.ceil(sniffCd)}s` : 'READY';
+    ui.sniff.textContent = sniffCd ? `${Math.ceil(sniffCd)}s` : T.hud.ready;
     ui.sniffMeter.style.width = `${100 * (1 - sniffCd / SNIFF_COOLDOWN)}%`;
 
     if (olly.t < 1) {
@@ -227,7 +230,7 @@ export function mountMazeGame(root: HTMLElement) {
     }
 
     idle += dt; thoughtTimer += dt;
-    if (idle > 5 && thoughtTimer > 5) { thoughtTimer = 0; say(pick(THOUGHTS)); }
+    if (idle > 5 && thoughtTimer > 5) { thoughtTimer = 0; say(pick(T.thoughts)); }
   }
 
   function render(now: number) {
@@ -271,7 +274,7 @@ export function mountMazeGame(root: HTMLElement) {
     // olly
     const ease = olly.t * (2 - olly.t);
     const ox = (olly.fx + (olly.x - olly.fx) * ease) * c, oy = (olly.fy + (olly.y - olly.fy) * ease) * c;
-    const os = c / 27, hop = olly.t < 1 ? -Math.sin(olly.t * Math.PI) * c * 0.1 : 0;
+    const os = c / 17, hop = olly.t < 1 ? -Math.sin(olly.t * Math.PI) * c * 0.1 : 0;
     drawOlly(ctx, ox + (c - OLLY_SIZE.w * os) / 2, oy + (c - OLLY_SIZE.h * os) / 2 + hop, os, olly);
 
     // fog of war: remembered cells stay dim, a soft light follows Olly

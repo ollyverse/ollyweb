@@ -1,0 +1,19 @@
+---
+import Base from '../layouts/Base.astro';
+import Hero from './Hero.astro';
+import MazeGame from './MazeGame.astro';
+import FieldGuide from './FieldGuide.astro';
+---
+<Base>
+  <div class="stage">
+    <Hero />
+    <MazeGame />
+  </div>
+  <FieldGuide />
+</Base>
+
+<style>
+  @media (min-width: 1100px) {
+    .stage { display: grid; grid-template-columns: 1fr 1fr; align-items: center; max-width: 120rem; margin: 0 auto; }
+  }
+</style>

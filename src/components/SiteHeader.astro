@@ -1,6 +1,21 @@
+---
+import { getRelativeLocaleUrl } from 'astro:i18n';
+import { languages, useText, type Lang } from '../i18n/ui';
+
+const T = useText(Astro.currentLocale).header;
+const current = Astro.currentLocale;
+const langs = Object.entries(languages) as [Lang, string][];
+---
 <header>
-  <a class="logo" href="/#top">OLLY<span>VERSE</span></a>
-  <button class="chip" id="mute" aria-label="Toggle sound">♪ ON</button>
+  <a class="logo" href={getRelativeLocaleUrl(current ?? 'en', '')}>OLLY<span>VERSE</span></a>
+  <div class="tools">
+    <nav class="langs" aria-label={T.langLabel}>
+      {langs.map(([code, label]) => (
+        <a href={getRelativeLocaleUrl(code, '')} hreflang={code} data-lang={code} aria-current={code === current ? 'true' : undefined}>{label}</a>
+      ))}
+    </nav>
+    <button class="chip" id="mute" aria-label={T.soundLabel}>{T.soundOn}</button>
+  </div>
 </header>
 
 <style>
@@ -11,6 +26,11 @@
   }
   .logo { color: var(--butter); text-decoration: none; }
   .logo span { color: var(--pink); }
+  .tools { display: flex; gap: 1rem; align-items: center; }
+  .langs { display: flex; gap: 0.25rem; }
+  .langs a { color: var(--muted); text-decoration: none; padding: 0.5rem 0.5rem; }
+  .langs a:hover { color: var(--ink); }
+  .langs a[aria-current] { color: var(--bg); background: var(--butter); }
   .chip {
     font: inherit; color: var(--ink); background: transparent; cursor: pointer;
     border: 0.125rem solid var(--muted); padding: 0.5rem 0.625rem;
@@ -21,9 +41,16 @@
 
 <script>
   import { isMuted, setMuted } from '../lib/sound';
+  import { store } from '../lib/storage';
+  import { pageText } from '../i18n/ui';
 
+  const T = pageText().header;
   const btn = document.getElementById('mute')!;
-  const paint = () => { btn.textContent = isMuted() ? '♪ OFF' : '♪ ON'; };
+  const paint = () => { btn.textContent = isMuted() ? T.soundOff : T.soundOn; };
   paint();
   btn.addEventListener('click', () => { setMuted(!isMuted()); paint(); });
+
+  // an explicit choice beats the browser-language redirect in Base.astro
+  document.querySelectorAll<HTMLAnchorElement>('[data-lang]').forEach(a =>
+    a.addEventListener('click', () => store.set('olly.lang', a.dataset.lang)));
 </script>

@@ -1,10 +1,13 @@
 ---
+import { useText } from '../i18n/ui';
+
+const T = useText(Astro.currentLocale).footer;
 const year = new Date().getFullYear();
 ---
 <footer>
   <b>OLLYVERSE.COM</b><br />
-  Something bigger is sniffing its way here.<br />
-  © {year} · no bones were harmed
+  {T.teaser}<br />
+  © {year} · {T.harmed}
 </footer>
 
 <style>

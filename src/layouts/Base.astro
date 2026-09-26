@@ -3,18 +3,20 @@ import '../styles/global.css';
 import Starfield from '../components/Starfield.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import SiteFooter from '../components/SiteFooter.astro';
+import { getAbsoluteLocaleUrl } from 'astro:i18n';
+import { languages, defaultLang, useText, type Lang } from '../i18n/ui';
 
 interface Props {
   title?: string;
   description?: string;
 }
-const {
-  title = 'Ollyverse — Olly lost his bone. Again.',
-  description = 'A tiny universe run by one very fluffy black Pomeranian. He lost his bone. Help Olly sniff it out across the Ollyverse.',
-} = Astro.props;
+const lang = (Astro.currentLocale ?? defaultLang) as Lang;
+const T = useText(lang).meta;
+const { title = T.title, description = T.description } = Astro.props;
+const isDefaultHome = lang === defaultLang && Astro.url.pathname === '/';
 ---
 <!doctype html>
-<html lang="en">
+<html lang={lang}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -23,7 +25,18 @@ const {
     <meta property="og:title" content="OLLYVERSE" />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={new URL(Astro.url.pathname, Astro.site)} />
-    <meta name="theme-color" content="#140a2e" />
+    <meta property="og:locale" content={lang === 'sk' ? 'sk_SK' : 'en_US'} />
+    <meta name="theme-color" content="#1b1233" />
+    {Object.keys(languages).map(code => <link rel="alternate" hreflang={code} href={getAbsoluteLocaleUrl(code, '')} />)}
+    <link rel="alternate" hreflang="x-default" href={getAbsoluteLocaleUrl(defaultLang, '')} />
+    {isDefaultHome && (
+      <script is:inline>
+        // first visit from a Slovak browser → Slovak version (unless a language was picked before)
+        try {
+          if (!localStorage.getItem('olly.lang') && /^(sk|cs)\b/i.test(navigator.language)) location.replace('/sk/');
+        } catch {}
+      </script>
+    )}
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
