@@ -10,6 +10,12 @@ hunts for his bone while a robot vacuum, a smug cat and bath time chase him.
 Built with [Astro](https://astro.build): static output, no UI framework, the game is plain TypeScript on a `<canvas>`.
 English and Slovak.
 
+## Docs
+
+- [Architecture](docs/architecture.md) · [Development](docs/development.md) · [Game design](docs/game.md)
+- [CI/CD](docs/ci-cd.md) · [**Release process**](docs/release.md)
+- AI agents: [AGENTS.md](AGENTS.md)
+
 ## Quick start
 
 Requires Node **22.12+** (see `.nvmrc`).
