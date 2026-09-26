@@ -53,21 +53,26 @@ export interface OllyPose { flip?: boolean; wag?: number; step?: number; blink?:
 // A tiny overlap hides seams when the scale is fractional (maze cells), but blurs crisp big sprites.
 const overlap = (s: number) => (s < 6 ? 0.5 : 0);
 
-export function drawOlly(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, { flip = false, wag = 0, step = 0, blink = false }: OllyPose = {}) {
-  const rows = OLLY.concat(LEGS[step]).map((row, i) => {
-    if (i < TAIL[wag].length) row = TAIL[wag][i] + row.slice(TAIL_W);
-    return blink && i === EYES_ROW ? row.replace(/[ew]/g, 'd') : row;
-  });
+export interface PixelOptions { flip?: boolean; outline?: string | null }
+
+/** Draws a character-map sprite at (x,y) with pixel size `s`; `.` is transparent. */
+export function drawPixels(
+  ctx: CanvasRenderingContext2D, rows: readonly string[], pal: Record<string, string>,
+  x: number, y: number, s: number, { flip = false, outline = OUTLINE }: PixelOptions = {},
+) {
+  const w = Math.max(...rows.map(r => r.length));
   const pixels: [number, number, string][] = [];
   rows.forEach((row, cy) => [...row].forEach((ch, cx) => {
-    if (ch !== '.') pixels.push([flip ? x + (OLLY_SIZE.w - 1 - cx) * s : x + cx * s, y + cy * s, PAL[ch]]);
+    if (ch !== '.') pixels.push([flip ? x + (w - 1 - cx) * s : x + cx * s, y + cy * s, pal[ch]]);
   }));
 
-  // sticker-style outline keeps a black dog readable on a dark background
-  ctx.fillStyle = OUTLINE;
-  for (const [X, Y] of pixels) {
-    ctx.fillRect(X - s, Y, s * 3, s);
-    ctx.fillRect(X, Y - s, s, s * 3);
+  // sticker-style outline keeps dark sprites readable on a dark background
+  if (outline) {
+    ctx.fillStyle = outline;
+    for (const [X, Y] of pixels) {
+      ctx.fillRect(X - s, Y, s * 3, s);
+      ctx.fillRect(X, Y - s, s, s * 3);
+    }
   }
   const e = overlap(s);
   for (const [X, Y, col] of pixels) {
@@ -76,8 +81,14 @@ export function drawOlly(ctx: CanvasRenderingContext2D, x: number, y: number, s:
   }
 }
 
+export function drawOlly(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, { flip = false, wag = 0, step = 0, blink = false }: OllyPose = {}) {
+  const rows = OLLY.concat(LEGS[step]).map((row, i) => {
+    if (i < TAIL[wag].length) row = TAIL[wag][i] + row.slice(TAIL_W);
+    return blink && i === EYES_ROW ? row.replace(/[ew]/g, 'd') : row;
+  });
+  drawPixels(ctx, rows, PAL, x, y, s, { flip });
+}
+
 export function drawBone(ctx: CanvasRenderingContext2D, x: number, y: number, s: number) {
-  const e = overlap(s);
-  ctx.fillStyle = PAL.w;
-  BONE.forEach((row, cy) => [...row].forEach((ch, cx) => { if (ch !== '.') ctx.fillRect(x + cx * s, y + cy * s, s + e, s + e); }));
+  drawPixels(ctx, BONE, PAL, x, y, s, { outline: null });
 }

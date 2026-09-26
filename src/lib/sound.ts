@@ -31,5 +31,6 @@ export const sfx = {
   woof() { tone(420, 0.09, 'square', 0.09, 180); tone(380, 0.12, 'square', 0.09, 150, 0.13); },
   bonk() { tone(120, 0.08, 'triangle', 0.12, 70); },
   sniff() { for (let i = 0; i < 4; i++) tone(900 + i * 120, 0.05, 'sawtooth', 0.03, 1400, i * 0.07); },
+  caught() { tone(440, 0.14, 'square', 0.08, 330); tone(330, 0.14, 'square', 0.08, 247, 0.15); tone(247, 0.3, 'square', 0.08, 110, 0.3); },
   win() { [523, 659, 784, 1047, 784, 1047].forEach((f, i) => tone(f, 0.14, 'square', 0.07, undefined, i * 0.09)); },
 };

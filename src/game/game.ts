@@ -1,19 +1,27 @@
 import { store } from '../lib/storage';
 import { sfx } from '../lib/sound';
 import { drawOlly, drawBone, OLLY_SIZE, BONE_SIZE } from '../lib/sprites';
-import { generateMaze, isWall, openNeighbours, bfs, pathBetween, DIRS, type Dir, type Maze, type Point } from './maze';
+import { generateMaze, isWall, openNeighbours, bfs, distances, pathBetween, DIRS, type Dir, type Maze, type Point } from './maze';
+import { roster, newcomer, createEnemy, resetEnemy, moveEnemy, enemyPos, drawEnemy, type Enemy } from './enemies';
 import { planetName, pick } from './content';
 import { pageText } from '../i18n/ui';
 
-const SPEED = 11;        // cells per second
-const SNIFF_COOLDOWN = 6; // seconds
+const SPEED = 8;          // Olly, cells per second
+const LIVES = 3;
+const GRACE = 1.3;        // seconds enemies wait at the start and after a catch
+const INVULNERABLE = 1.6; // seconds Olly can't be caught after a respawn
+const CAUGHT_PAUSE = 1.1;
+const HIT_RADIUS = 0.6;   // cells
+const SNIFF_COOLDOWN = 6;
 const SNIFF_SHOW = 2.4;
-const SIGHT = 2.6;       // cells Olly remembers around him in the dark
 const CONFETTI = ['#ff8fcf', '#8ff0d0', '#ffe38a', '#c9a7ff', '#fff5fb'];
 
-type State = 'title' | 'play' | 'win';
+type State = 'title' | 'play' | 'win' | 'over';
 interface Olly extends Point { fx: number; fy: number; t: number; flip: boolean; wag: number; step: number; anim: number }
 interface Particle { x: number; y: number; vx: number; vy: number; life: number; color: string; bone: boolean }
+
+// dev only: /?planet=5 starts a run on planet 5
+const FIRST_PLANET = (import.meta.env.DEV && Number(new URLSearchParams(location.search).get('planet'))) || 1;
 
 const KEYS: Record<string, Dir> = {
   ArrowUp: 'up', KeyW: 'up', ArrowDown: 'down', KeyS: 'down',
@@ -27,55 +35,66 @@ export function mountMazeGame(root: HTMLElement) {
   const ref = <T extends HTMLElement>(name: string) => root.querySelector<T>(`[data-ref="${name}"]`)!;
   const canvas = ref<HTMLCanvasElement>('canvas');
   const ctx = canvas.getContext('2d')!;
-  const fog = document.createElement('canvas');
-  const fctx = fog.getContext('2d')!;
   const ui = {
     overlay: ref('overlay'), title: ref('overlay-title'), text: ref('overlay-text'), button: ref<HTMLButtonElement>('overlay-button'),
-    level: ref('level'), time: ref('time'), bones: ref('bones'), sniff: ref('sniff'), sniffMeter: ref('sniff-meter'), thought: ref('thought'),
+    level: ref('level'), lives: ref('lives'), time: ref('time'), sniff: ref('sniff'), sniffMeter: ref('sniff-meter'), thought: ref('thought'),
   };
 
   let state: State = 'title';
   let level = 1;
+  let lives = LIVES;
   let maze: Maze;
   let bone: Point;
   let olly: Olly;
-  let seen: Uint8Array, trail: Uint8Array;
-  let fogOn = false;
+  let enemies: Enemy[] = [];
+  let chase: Int32Array;    // steps from every cell to Olly, steers the enemies
+  let trail: Uint8Array;
   let held: Dir | null = null;
   let run: Dir | null = null;
   let time = 0, timing = false;
+  let grace = 0, invulnerable = 0, pause = 0;
   let sniffCd = 0, sniffT = 0, sniffPath: number[] = [];
   let particles: Particle[] = [];
   let bones = store.get('olly.bones', 0);
-  let idle = 0, thoughtTimer = 0, lastBonk = 0;
+  let idle = 0, thoughtTimer = 0, panicTimer = 0, lastBonk = 0;
   let dpr = 1;
 
-  ui.bones.textContent = String(bones);
   const say = (text: string) => { ui.thought.textContent = text; };
   const cell = () => canvas.width / maze.size;
+  const paintLives = () => { ui.lives.textContent = '♥'.repeat(lives) + '·'.repeat(LIVES - lives); };
+  const ollyPos = (): Point => {
+    const ease = olly.t * (2 - olly.t);
+    return { x: olly.fx + (olly.x - olly.fx) * ease, y: olly.fy + (olly.y - olly.fy) * ease };
+  };
 
   function startLevel() {
-    maze = generateMaze(Math.min(4 + level * 2, 22));
+    // the maze stays small and loopy (room to dodge); the enemies make it harder
+    maze = generateMaze(Math.min(5 + Math.floor(level / 2), 9), 0.15);
+    const G = maze.size;
     const { order } = bfs(maze, 1, 1);
     const far = order[order.length - 1];
-    bone = { x: far % maze.size, y: (far / maze.size) | 0 };
+    bone = { x: far % G, y: (far / G) | 0 };
     olly = { x: 1, y: 1, fx: 1, fy: 1, t: 1, flip: false, wag: 0, step: 0, anim: 0 };
-    seen = new Uint8Array(maze.size ** 2);
-    trail = new Uint8Array(maze.size ** 2);
-    fogOn = level >= 2;
+    trail = new Uint8Array(G * G);
+
+    // enemies start far from Olly, never on the bone, spread over distinct cells
+    const fromStart = distances(maze, 1, 1);
+    const maxD = fromStart[far];
+    const spots = order.filter(c => fromStart[c] >= Math.max(4, maxD * 0.45) && c !== far);
+    enemies = roster(level).map(kind => {
+      const i = (Math.random() * spots.length) | 0;
+      const c = spots.splice(i, 1)[0] ?? far;
+      return createEnemy(kind, { x: c % G, y: (c / G) | 0 });
+    });
+
+    chase = fromStart;
     time = 0; timing = false; held = null; run = null;
+    grace = GRACE; invulnerable = 0; pause = 0;
     sniffCd = 0; sniffT = 0; sniffPath = []; particles = [];
-    reveal();
     ui.level.textContent = String(level);
     ui.time.textContent = '0.0';
+    paintLives();
     resize();
-  }
-
-  function reveal() {
-    const G = maze.size, { x, y } = olly;
-    for (let yy = Math.floor(y - SIGHT); yy <= y + SIGHT; yy++)
-      for (let xx = Math.floor(x - SIGHT); xx <= x + SIGHT; xx++)
-        if (xx >= 0 && yy >= 0 && xx < G && yy < G && (xx - x) ** 2 + (yy - y) ** 2 <= SIGHT ** 2) seen[yy * G + xx] = 1;
   }
 
   function tryMove(dir: Dir) {
@@ -89,13 +108,13 @@ export function mountMazeGame(root: HTMLElement) {
     olly.fx = olly.x; olly.fy = olly.y;
     olly.x += dx; olly.y += dy; olly.t = 0;
     if (dx) olly.flip = dx < 0;
+    chase = distances(maze, olly.x, olly.y);
     timing = true;
     idle = 0;
   }
 
   function arrive() {
     trail[olly.fy * maze.size + olly.fx] = 1;
-    reveal();
     if (olly.x === bone.x && olly.y === bone.y) return win();
     if (run) {
       const [dx, dy] = DIRS[run];
@@ -104,32 +123,61 @@ export function mountMazeGame(root: HTMLElement) {
     }
   }
 
+  function burst(x: number, y: number) {
+    for (let i = 0; i < 70; i++) {
+      const a = Math.random() * Math.PI * 2, v = 2 + Math.random() * 6;
+      particles.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 3, life: 1, color: CONFETTI[i % CONFETTI.length], bone: i % 6 === 0 });
+    }
+  }
+
   function win() {
     state = 'win'; timing = false; held = null; run = null;
     bones++;
     store.set('olly.bones', bones);
-    ui.bones.textContent = String(bones);
+    store.set('olly.bestPlanet', Math.max(store.get('olly.bestPlanet', 0), level + 1));
     sfx.win();
-
-    const cx = (bone.x + 0.5) * cell(), cy = (bone.y + 0.5) * cell();
-    for (let i = 0; i < 70; i++) {
-      const a = Math.random() * Math.PI * 2, v = 2 + Math.random() * 6;
-      particles.push({ x: cx, y: cy, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 3, life: 1, color: CONFETTI[i % CONFETTI.length], bone: i % 6 === 0 });
-    }
+    burst((bone.x + 0.5) * cell(), (bone.y + 0.5) * cell());
 
     const best = store.get<number | null>(`olly.best.${level}`, null);
-    const record = best == null || time < best;
-    if (record) store.set(`olly.best.${level}`, time);
+    if (best == null || time < best) store.set(`olly.best.${level}`, time);
+    const coming = newcomer(level + 1);
     const text =
       T.found(planet(level), time.toFixed(1)) +
-      '<br>' + (record ? T.record : T.best(best.toFixed(1))) +
+      '<br>' + (best == null || time < best ? T.record : T.best(best.toFixed(1))) +
       '<br><br>' + T.next(planet(level + 1)) +
-      (level === 1 ? '<br>' + T.darkAhead : '');
+      (coming ? '<br><br>' + T.newThreat(T.enemies[coming].name, T.enemies[coming].desc) : '');
     setTimeout(() => showOverlay(pick(T.praise), text, T.nextButton), 900);
   }
 
+  function caught(e: Enemy) {
+    lives--;
+    paintLives();
+    held = null; run = null;
+    sfx.caught();
+    const line = T.enemies[e.kind].caught;
+    if (lives > 0) {
+      say(`${line} ${T.livesLeft(lives)}`);
+      pause = CAUGHT_PAUSE;
+      return;
+    }
+    state = 'over'; timing = false;
+    say(line);
+    const best = Math.max(store.get('olly.bestPlanet', 0), level);
+    store.set('olly.bestPlanet', best);
+    const text = `${line}<br><br>${T.gameOver(planet(level), level, best)}<br>${T.bonesTotal(bones)}`;
+    setTimeout(() => showOverlay(T.gameOverTitle, text, T.retry), 1000);
+  }
+
+  function respawn() {
+    olly = { ...olly, x: 1, y: 1, fx: 1, fy: 1, t: 1 };
+    enemies.forEach(resetEnemy);
+    chase = distances(maze, 1, 1);
+    grace = GRACE;
+    invulnerable = INVULNERABLE;
+  }
+
   function sniff() {
-    if (state !== 'play' || sniffCd > 0) return;
+    if (state !== 'play' || sniffCd > 0 || pause > 0) return;
     sfx.sniff();
     sniffPath = pathBetween(maze, olly, bone).slice(0, 15);
     sniffT = SNIFF_SHOW;
@@ -145,18 +193,19 @@ export function mountMazeGame(root: HTMLElement) {
   }
 
   function begin() {
-    level = state === 'win' ? level + 1 : 1;
+    if (state === 'win') level++;
+    else { level = FIRST_PLANET; lives = LIVES; }
     startLevel();
     ui.overlay.hidden = true;
     state = 'play';
-    say(fogOn ? T.dark : T.welcome(planet(level)));
+    say(T.welcome(planet(level)));
     sfx.woof();
   }
 
   function resize() {
     const size = canvas.parentElement!.getBoundingClientRect().width;
     dpr = Math.min(window.devicePixelRatio || 1, 2);
-    canvas.width = canvas.height = fog.width = fog.height = Math.round(size * dpr);
+    canvas.width = canvas.height = Math.round(size * dpr);
     ctx.imageSmoothingEnabled = false;
   }
 
@@ -220,6 +269,14 @@ export function mountMazeGame(root: HTMLElement) {
     ui.sniff.textContent = sniffCd ? `${Math.ceil(sniffCd)}s` : T.hud.ready;
     ui.sniffMeter.style.width = `${100 * (1 - sniffCd / SNIFF_COOLDOWN)}%`;
 
+    if (pause > 0) {
+      pause -= dt;
+      if (pause <= 0) respawn();
+      return;
+    }
+    grace = Math.max(0, grace - dt);
+    invulnerable = Math.max(0, invulnerable - dt);
+
     if (olly.t < 1) {
       olly.t = Math.min(1, olly.t + dt * SPEED);
       if (olly.t === 1) arrive();
@@ -228,9 +285,25 @@ export function mountMazeGame(root: HTMLElement) {
       const d = held ?? run;
       if (d) tryMove(d);
     }
+    if (state !== 'play') return;
 
-    idle += dt; thoughtTimer += dt;
-    if (idle > 5 && thoughtTimer > 5) { thoughtTimer = 0; say(pick(T.thoughts)); }
+    const me = ollyPos();
+    let nearest: { e: Enemy; d: number } | null = null;
+    for (const e of enemies) {
+      if (!grace) moveEnemy(e, dt, level, maze, chase, me);
+      const p = enemyPos(e), d = Math.hypot(p.x - me.x, p.y - me.y);
+      if (!nearest || d < nearest.d) nearest = { e, d };
+    }
+    if (nearest && !invulnerable && nearest.d < HIT_RADIUS) return caught(nearest.e);
+
+    idle += dt; thoughtTimer += dt; panicTimer = Math.max(0, panicTimer - dt);
+    if (nearest && nearest.d < 2.5 && !panicTimer) {
+      panicTimer = 4;
+      say(T.enemies[nearest.e.kind].panic);
+    } else if (idle > 5 && thoughtTimer > 5) {
+      thoughtTimer = 0;
+      say(pick(T.thoughts));
+    }
   }
 
   function render(now: number) {
@@ -263,41 +336,7 @@ export function mountMazeGame(root: HTMLElement) {
       }
     }
 
-    // bone
-    const bob = Math.sin(now / 250) * c * 0.08, bs = c / 11;
-    ctx.save();
-    ctx.shadowColor = '#ffe38a';
-    ctx.shadowBlur = c * 0.6;
-    drawBone(ctx, (bone.x + 0.5) * c - (BONE_SIZE.w / 2) * bs, (bone.y + 0.5) * c - (BONE_SIZE.h / 2) * bs + bob, bs);
-    ctx.restore();
-
-    // olly
-    const ease = olly.t * (2 - olly.t);
-    const ox = (olly.fx + (olly.x - olly.fx) * ease) * c, oy = (olly.fy + (olly.y - olly.fy) * ease) * c;
-    const os = c / 22, hop = olly.t < 1 ? -Math.sin(olly.t * Math.PI) * c * 0.1 : 0;
-    drawOlly(ctx, ox + (c - OLLY_SIZE.w * os) / 2, oy + (c - OLLY_SIZE.h * os) / 2 + hop, os, olly);
-
-    // fog of war: remembered cells stay dim, a soft light follows Olly
-    if (fogOn && state !== 'win') {
-      fctx.globalCompositeOperation = 'source-over';
-      fctx.clearRect(0, 0, W, W);
-      fctx.fillStyle = 'rgba(10,6,24,.97)';
-      fctx.fillRect(0, 0, W, W);
-      fctx.globalCompositeOperation = 'destination-out';
-      fctx.fillStyle = 'rgba(0,0,0,.5)';
-      for (let i = 0; i < seen.length; i++) if (seen[i]) fctx.fillRect(f((i % G) * c), f(((i / G) | 0) * c), cl(c) + 1, cl(c) + 1);
-      const cx = ox + c / 2, cy = oy + c / 2, R = c * 3.2;
-      const grd = fctx.createRadialGradient(cx, cy, c * 0.5, cx, cy, R);
-      grd.addColorStop(0, 'rgba(0,0,0,1)');
-      grd.addColorStop(1, 'rgba(0,0,0,0)');
-      fctx.fillStyle = grd;
-      fctx.beginPath();
-      fctx.arc(cx, cy, R, 0, Math.PI * 2);
-      fctx.fill();
-      ctx.drawImage(fog, 0, 0);
-    }
-
-    // sniff trail sits above the fog
+    // sniff trail
     if (sniffT > 0) {
       const a = Math.min(1, sniffT / 0.6);
       sniffPath.forEach((p, i) => {
@@ -306,6 +345,34 @@ export function mountMazeGame(root: HTMLElement) {
         ctx.fillStyle = `rgba(143,240,208,${a * (1 - (i / sniffPath.length) * 0.7)})`;
         ctx.fillRect(x - s / 2, y - s / 2, s, s);
       });
+    }
+
+    // bone
+    const bob = Math.sin(now / 250) * c * 0.08, bs = c / 11;
+    ctx.save();
+    ctx.shadowColor = '#ffe38a';
+    ctx.shadowBlur = c * 0.6;
+    drawBone(ctx, (bone.x + 0.5) * c - (BONE_SIZE.w / 2) * bs, (bone.y + 0.5) * c - (BONE_SIZE.h / 2) * bs + bob, bs);
+    ctx.restore();
+
+    // olly (flickers while he can't be caught)
+    const me = ollyPos();
+    if (!(invulnerable > 0 && Math.floor(now / 90) % 2)) {
+      const os = c / 22, hop = olly.t < 1 ? -Math.sin(olly.t * Math.PI) * c * 0.1 : 0;
+      drawOlly(ctx, me.x * c + (c - OLLY_SIZE.w * os) / 2, me.y * c + (c - OLLY_SIZE.h * os) / 2 + hop, os, olly);
+    }
+
+    // enemies (shivering while they wait for the go)
+    for (const e of enemies) {
+      const p = enemyPos(e);
+      const shake = grace > 0 && state === 'play' ? Math.sin(now / 30) * 0.03 : 0;
+      drawEnemy(ctx, e, { x: p.x + shake, y: p.y }, c, now);
+    }
+
+    // caught flash
+    if (pause > 0) {
+      ctx.fillStyle = `rgba(255,111,174,${0.35 * (pause / CAUGHT_PAUSE)})`;
+      ctx.fillRect(0, 0, W, W);
     }
 
     // confetti
@@ -328,6 +395,5 @@ export function mountMazeGame(root: HTMLElement) {
 
   // a demo maze sits behind the title screen
   startLevel();
-  fogOn = false;
   requestAnimationFrame(loop);
 }

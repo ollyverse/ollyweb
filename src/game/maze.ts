@@ -59,6 +59,14 @@ export function bfs(m: Maze, sx: number, sy: number) {
   return { prev, order };
 }
 
+/** Steps from (sx,sy) to every reachable cell; -1 for walls and unreachable cells. */
+export function distances(m: Maze, sx: number, sy: number): Int32Array {
+  const { prev, order } = bfs(m, sx, sy);
+  const dist = new Int32Array(m.size ** 2).fill(-1);
+  for (const c of order) dist[c] = prev[c] < 0 ? 0 : dist[prev[c]] + 1;
+  return dist;
+}
+
 /** Cell indices from `from` (exclusive) to `to` (inclusive). */
 export function pathBetween(m: Maze, from: Point, to: Point): number[] {
   const { prev } = bfs(m, from.x, from.y);
