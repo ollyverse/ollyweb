@@ -20,8 +20,8 @@ interface KindSpec {
 const KINDS: Record<EnemyKind, KindSpec> = {
   // robot vacuum: slow, loud, always takes the shortest path
   vacuum: {
-    speed: level => Math.min(3 + level * 0.35, 6.5),
-    wander: 0,
+    speed: level => Math.min(2.8 + level * 0.3, 6),
+    wander: 0.12,
     ghost: false,
     pal: { d: '#6b6f8e', s: '#d9dcef', l: '#ffffff', r: '#ff3d6e', k: '#2b2d3d', b: '#ffe38a' },
     outline: true,
@@ -33,7 +33,7 @@ const KINDS: Record<EnemyKind, KindSpec> = {
   },
   // the cat: quick but gets distracted
   cat: {
-    speed: level => Math.min(4.2 + level * 0.35, 8),
+    speed: level => Math.min(3.9 + level * 0.3, 7.2),
     wander: 0.35,
     ghost: false,
     pal: { o: '#ffa45b', q: '#d9702a', e: '#b6ff3b', k: '#1a1020', p: '#ff9ecb', w: '#fff3dc' },
@@ -46,7 +46,7 @@ const KINDS: Record<EnemyKind, KindSpec> = {
   },
   // bath time: a soap bubble with a rubber duck, drifts through walls
   bubble: {
-    speed: level => Math.min(0.9 + level * 0.12, 2.2),
+    speed: level => Math.min(0.8 + level * 0.1, 1.9),
     wander: 0,
     ghost: true,
     pal: { c: '#9fe8ff', w: '#ffffff', y: '#ffe066', o: '#ff9f43', k: '#1a1020' },
@@ -83,16 +83,19 @@ export interface Enemy {
   x: number; y: number; fx: number; fy: number; t: number;
   // ghosts float freely; (x,y) is their position
   flip: boolean; frame: number; anim: number;
+  /** seconds left of being stunned by a bark */
+  stun: number;
 }
 
 export function createEnemy(kind: EnemyKind, spawn: Point): Enemy {
-  return { kind, spawn, x: spawn.x, y: spawn.y, fx: spawn.x, fy: spawn.y, t: 1, flip: false, frame: 0, anim: 0 };
+  return { kind, spawn, x: spawn.x, y: spawn.y, fx: spawn.x, fy: spawn.y, t: 1, flip: false, frame: 0, anim: 0, stun: 0 };
 }
 
 export function resetEnemy(e: Enemy) {
   e.x = e.fx = e.spawn.x;
   e.y = e.fy = e.spawn.y;
   e.t = 1;
+  e.stun = 0;
 }
 
 /** Current position in cell units (cell centre = integer + 0.5 is added by the caller). */
@@ -108,6 +111,7 @@ export function enemyPos(e: Enemy): Point {
 export function moveEnemy(e: Enemy, dt: number, level: number, maze: Maze, dist: Int32Array, olly: Point) {
   const spec = KINDS[e.kind];
   const speed = spec.speed(level);
+  if (e.stun > 0) { e.stun = Math.max(0, e.stun - dt); return; }
   e.anim += dt;
   if (e.anim > 0.16) { e.anim = 0; e.frame ^= 1; }
 
@@ -158,7 +162,8 @@ export function drawEnemy(ctx: CanvasRenderingContext2D, e: Enemy, pos: Point, c
   const w = Math.max(...rows.map(r => r.length)), h = rows.length;
   const s = c / (Math.max(w, h) + 1.5);
   const bob = spec.ghost ? Math.sin(now / 300) * c * 0.06 : 0;
-  const x = pos.x * c + (c - w * s) / 2, y = pos.y * c + (c - h * s) / 2 + bob;
+  const wobble = e.stun > 0 ? Math.sin(now / 50) * c * 0.05 : 0;
+  const x = pos.x * c + (c - w * s) / 2 + wobble, y = pos.y * c + (c - h * s) / 2 + bob;
   if (spec.ghost) {
     ctx.fillStyle = 'rgba(159,232,255,.18)';
     ctx.beginPath();
@@ -166,4 +171,16 @@ export function drawEnemy(ctx: CanvasRenderingContext2D, e: Enemy, pos: Point, c
     ctx.fill();
   }
   drawPixels(ctx, rows, spec.pal, x, y, s, { flip: spec.facesLeft ? !e.flip : e.flip, outline: spec.outline ? undefined : null });
+
+  // dizzy stars circling above a stunned enemy
+  if (e.stun > 0) {
+    const cx = pos.x * c + c / 2, cy = pos.y * c + c * 0.08, r = c * 0.28, size = Math.max(2, c * 0.1);
+    ctx.fillStyle = '#ffe38a';
+    for (let i = 0; i < 3; i++) {
+      const a = now / 180 + (i * Math.PI * 2) / 3;
+      ctx.fillRect(cx + Math.cos(a) * r - size / 2, cy + Math.sin(a) * r * 0.35 - size / 2, size, size);
+    }
+  }
 }
+
+export const isStunned = (e: Enemy) => e.stun > 0;

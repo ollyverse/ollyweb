@@ -2,7 +2,7 @@ import { store } from '../lib/storage';
 import { sfx } from '../lib/sound';
 import { drawOlly, drawBone, OLLY_SIZE, BONE_SIZE } from '../lib/sprites';
 import { generateMaze, isWall, openNeighbours, bfs, distances, pathBetween, DIRS, type Dir, type Maze, type Point } from './maze';
-import { roster, newcomer, createEnemy, resetEnemy, moveEnemy, enemyPos, drawEnemy, type Enemy } from './enemies';
+import { roster, newcomer, createEnemy, resetEnemy, moveEnemy, enemyPos, drawEnemy, isStunned, type Enemy } from './enemies';
 import { planetName, pick } from './content';
 import { pageText } from '../i18n/ui';
 
@@ -12,6 +12,10 @@ const GRACE = 1.3;        // seconds enemies wait at the start and after a catch
 const INVULNERABLE = 1.6; // seconds Olly can't be caught after a respawn
 const CAUGHT_PAUSE = 1.1;
 const HIT_RADIUS = 0.6;   // cells
+const BARK_COOLDOWN = 5;
+const BARK_RADIUS = 3.5;  // cells
+const BARK_STUN = 2.5;    // seconds
+const BARK_RING = 0.45;   // seconds the shock ring is visible
 const SNIFF_COOLDOWN = 6;
 const SNIFF_SHOW = 2.4;
 const CONFETTI = ['#ff8fcf', '#8ff0d0', '#ffe38a', '#c9a7ff', '#fff5fb'];
@@ -37,7 +41,7 @@ export function mountMazeGame(root: HTMLElement) {
   const ctx = canvas.getContext('2d')!;
   const ui = {
     overlay: ref('overlay'), title: ref('overlay-title'), text: ref('overlay-text'), button: ref<HTMLButtonElement>('overlay-button'),
-    level: ref('level'), lives: ref('lives'), time: ref('time'), sniff: ref('sniff'), sniffMeter: ref('sniff-meter'), thought: ref('thought'),
+    level: ref('level'), lives: ref('lives'), bark: ref('bark'), barkMeter: ref('bark-meter'), sniff: ref('sniff'), sniffMeter: ref('sniff-meter'), thought: ref('thought'),
   };
 
   let state: State = 'title';
@@ -53,6 +57,7 @@ export function mountMazeGame(root: HTMLElement) {
   let run: Dir | null = null;
   let time = 0, timing = false;
   let grace = 0, invulnerable = 0, pause = 0;
+  let barkCd = 0, barkT = 0, barkAt: Point = { x: 0, y: 0 };
   let sniffCd = 0, sniffT = 0, sniffPath: number[] = [];
   let particles: Particle[] = [];
   let bones = store.get('olly.bones', 0);
@@ -69,7 +74,7 @@ export function mountMazeGame(root: HTMLElement) {
 
   function startLevel() {
     // the maze stays small and loopy (room to dodge); the enemies make it harder
-    maze = generateMaze(Math.min(5 + Math.floor(level / 2), 9), 0.15);
+    maze = generateMaze(Math.min(5 + Math.floor(level / 2), 9), 0.3);
     const G = maze.size;
     const { order } = bfs(maze, 1, 1);
     const far = order[order.length - 1];
@@ -90,9 +95,9 @@ export function mountMazeGame(root: HTMLElement) {
     chase = fromStart;
     time = 0; timing = false; held = null; run = null;
     grace = GRACE; invulnerable = 0; pause = 0;
+    barkCd = 0; barkT = 0;
     sniffCd = 0; sniffT = 0; sniffPath = []; particles = [];
     ui.level.textContent = String(level);
-    ui.time.textContent = '0.0';
     paintLives();
     resize();
   }
@@ -176,6 +181,20 @@ export function mountMazeGame(root: HTMLElement) {
     invulnerable = INVULNERABLE;
   }
 
+  /** Stuns every enemy within reach; stunned enemies freeze and can be walked through. */
+  function bark() {
+    if (state !== 'play' || barkCd > 0 || pause > 0) return;
+    sfx.woof();
+    barkAt = ollyPos();
+    barkT = BARK_RING;
+    barkCd = BARK_COOLDOWN;
+    for (const e of enemies) {
+      const p = enemyPos(e);
+      if (Math.hypot(p.x - barkAt.x, p.y - barkAt.y) <= BARK_RADIUS) e.stun = BARK_STUN;
+    }
+    say(T.barking);
+  }
+
   function sniff() {
     if (state !== 'play' || sniffCd > 0 || pause > 0) return;
     sfx.sniff();
@@ -217,7 +236,8 @@ export function mountMazeGame(root: HTMLElement) {
     const d = KEYS[e.code];
     if (state === 'play') {
       if (d) { e.preventDefault(); held = d; run = null; }
-      else if (e.code === 'Space') { e.preventDefault(); sniff(); }
+      else if (e.code === 'Space') { e.preventDefault(); bark(); }
+      else if (e.code === 'KeyE') sniff();
     } else if (!ui.overlay.hidden && (e.code === 'Enter' || (e.code === 'Space' && inView()))) {
       e.preventDefault();
       begin();
@@ -239,6 +259,7 @@ export function mountMazeGame(root: HTMLElement) {
     b.addEventListener('pointercancel', release);
   });
   root.querySelector('[data-sniff]')?.addEventListener('pointerdown', e => { e.preventDefault(); sniff(); });
+  root.querySelector('[data-bark]')?.addEventListener('pointerdown', e => { e.preventDefault(); bark(); });
 
   // swipe on the maze = run down the corridor until the next junction
   let swipe: Point | null = null;
@@ -263,7 +284,11 @@ export function mountMazeGame(root: HTMLElement) {
     particles = particles.filter(p => p.life > 0);
     if (state !== 'play') return;
 
-    if (timing) { time += dt; ui.time.textContent = time.toFixed(1); }
+    if (timing) time += dt;
+    barkCd = Math.max(0, barkCd - dt);
+    barkT = Math.max(0, barkT - dt);
+    ui.bark.textContent = barkCd ? `${Math.ceil(barkCd)}s` : T.hud.ready;
+    ui.barkMeter.style.width = `${100 * (1 - barkCd / BARK_COOLDOWN)}%`;
     sniffCd = Math.max(0, sniffCd - dt);
     sniffT = Math.max(0, sniffT - dt);
     ui.sniff.textContent = sniffCd ? `${Math.ceil(sniffCd)}s` : T.hud.ready;
@@ -291,6 +316,7 @@ export function mountMazeGame(root: HTMLElement) {
     let nearest: { e: Enemy; d: number } | null = null;
     for (const e of enemies) {
       if (!grace) moveEnemy(e, dt, level, maze, chase, me);
+      if (isStunned(e)) continue; // harmless while dizzy
       const p = enemyPos(e), d = Math.hypot(p.x - me.x, p.y - me.y);
       if (!nearest || d < nearest.d) nearest = { e, d };
     }
@@ -367,6 +393,16 @@ export function mountMazeGame(root: HTMLElement) {
       const p = enemyPos(e);
       const shake = grace > 0 && state === 'play' ? Math.sin(now / 30) * 0.03 : 0;
       drawEnemy(ctx, e, { x: p.x + shake, y: p.y }, c, now);
+    }
+
+    // bark shock ring
+    if (barkT > 0) {
+      const k = 1 - barkT / BARK_RING;
+      ctx.strokeStyle = `rgba(255,227,138,${1 - k})`;
+      ctx.lineWidth = Math.max(2, c * 0.12);
+      ctx.beginPath();
+      ctx.arc((barkAt.x + 0.5) * c, (barkAt.y + 0.5) * c, BARK_RADIUS * c * (0.3 + 0.7 * k), 0, Math.PI * 2);
+      ctx.stroke();
     }
 
     // caught flash
