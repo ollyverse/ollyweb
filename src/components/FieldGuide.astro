@@ -1,9 +1,9 @@
 ---
 const cards = [
-  { icon: '🐕', title: 'POPULATION', text: '1 good boy. Several squirrels (unconfirmed).', accent: 'var(--pink)', tilt: -2 },
-  { icon: '🦴', title: 'CURRENCY', text: 'Bones. Exchange rate: 1 bone = 1 bone. Very stable.', accent: 'var(--cyan)', tilt: 1.5 },
-  { icon: '🪐', title: 'LAWS OF PHYSICS', text: 'Gravity is optional within 3 meters of a snack.', accent: 'var(--lime)', tilt: -1 },
-  { icon: '🧹', title: 'THREAT LEVEL', text: "The vacuum cleaner. We don't talk about the vacuum cleaner.", accent: 'var(--gold)', tilt: 2 },
+  { icon: '🐕', title: 'POPULATION', text: '1 fluffy black Pomeranian. Several squirrels (unconfirmed).', accent: 'var(--pink)', tilt: -2 },
+  { icon: '🦴', title: 'CURRENCY', text: 'Bones. Exchange rate: 1 bone = 1 bone. Very stable.', accent: 'var(--lilac)', tilt: 1.5 },
+  { icon: '🪐', title: 'LAWS OF PHYSICS', text: 'Gravity is optional within 3 meters of a snack.', accent: 'var(--mint)', tilt: -1 },
+  { icon: '🧹', title: 'THREAT LEVEL', text: "The vacuum cleaner. We don't talk about the vacuum cleaner.", accent: 'var(--butter)', tilt: 2 },
 ];
 ---
 <section class="lore">
@@ -21,14 +21,14 @@ const cards = [
 </section>
 
 <style>
-  .lore { max-width: 980px; margin: 0 auto; padding: 60px 16px 40px; }
-  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 18px; }
+  .lore { max-width: 61.25rem; margin: 0 auto; padding: 3.75rem 1rem 2.5rem; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(13.125rem, 1fr)); gap: 1.125rem; }
   .card {
-    background: var(--panel); border: 3px solid var(--ink); padding: 18px;
-    transform: rotate(var(--tilt)); box-shadow: 6px 6px 0 var(--accent); transition: transform .2s;
+    background: var(--panel); border: 0.1875rem solid var(--ink); padding: 1.125rem;
+    transform: rotate(var(--tilt)); box-shadow: 0.375rem 0.375rem 0 var(--accent); transition: transform .2s;
   }
   .card:hover { transform: rotate(0) scale(1.04); }
-  h4 { font-family: var(--pixel); font-size: 11px; color: var(--gold); margin: 0 0 12px; }
+  h4 { font-family: var(--pixel); font-size: 0.8125rem; color: var(--butter); margin: 0 0 0.75rem; }
   p { margin: 0; line-height: 1.5; color: var(--muted); }
-  .icon { font-size: 34px; display: block; margin-bottom: 8px; }
+  .icon { font-size: 2.125rem; display: block; margin-bottom: 0.5rem; }
 </style>

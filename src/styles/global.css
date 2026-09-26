@@ -1,21 +1,22 @@
 :root {
-  --bg: #140a2e;
-  --bg-deep: #0a0518;
-  --ink: #fff3dc;
-  --muted: #b7a6e0;
-  --pink: #ff4fa3;
-  --cyan: #3bf0ff;
-  --lime: #b6ff3b;
-  --gold: #ffc94d;
-  --panel: #1f1147;
+  --bg: #1b1233;
+  --bg-deep: #0f0a22;
+  --ink: #fff5fb;
+  --muted: #c8b8e8;
+  --pink: #ff8fcf;
+  --lilac: #c9a7ff;
+  --mint: #8ff0d0;
+  --butter: #ffe38a;
+  --panel: #26184a;
   --pixel: "Press Start 2P", monospace;
   --display: "Bungee", system-ui, sans-serif;
 }
 * { box-sizing: border-box; }
-html { scroll-behavior: smooth; }
+/* everything is sized in rem, so the whole page scales up on big screens */
+html { scroll-behavior: smooth; font-size: clamp(16px, 0.45vw + 10px, 30px); }
 body {
   margin: 0;
-  background: radial-gradient(ellipse at 50% -10%, #3a1a7a 0%, var(--bg) 45%, var(--bg-deep) 100%) fixed;
+  background: radial-gradient(ellipse at 50% -10%, #4a2a7a 0%, var(--bg) 45%, var(--bg-deep) 100%) fixed;
   background-color: var(--bg);
   color: var(--ink);
   font-family: "Space Grotesk", system-ui, sans-serif;
@@ -24,10 +25,10 @@ body {
 main, header, footer { position: relative; z-index: 1; }
 
 /* shared building blocks */
-.section-title { font-family: var(--display); font-size: clamp(22px, 4vw, 34px); text-align: center; margin: 0 0 8px; color: var(--cyan); }
-.section-sub { text-align: center; color: var(--muted); margin: 0 0 28px; }
+.section-title { font-family: var(--display); font-size: clamp(1.375rem, 4vw, 2.125rem); text-align: center; margin: 0 0 0.5rem; color: var(--lilac); }
+.section-sub { text-align: center; color: var(--muted); margin: 0 0 1.75rem; }
 .btn {
-  justify-self: center; font-family: var(--pixel); font-size: 12px; cursor: pointer; border: 0;
-  color: var(--bg); background: var(--lime); padding: 14px 18px; box-shadow: 4px 4px 0 var(--pink);
+  justify-self: center; font-family: var(--pixel); font-size: 0.75rem; cursor: pointer; border: 0;
+  color: var(--bg); background: var(--mint); padding: 0.875rem 1.125rem; box-shadow: 0.25rem 0.25rem 0 var(--pink);
 }
-.btn:active { transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--pink); }
+.btn:active { transform: translate(0.1875rem, 0.1875rem); box-shadow: 0.0625rem 0.0625rem 0 var(--pink); }

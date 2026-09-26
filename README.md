@@ -13,7 +13,7 @@ npm run build    # static site in dist/
 
 - `src/pages/` – one file per route (`index.astro` = homepage)
 - `src/layouts/Base.astro` – `<head>`, starfield, header, footer
-- `src/components/` – page sections (Hero, Ticker, MazeGame, FieldGuide, …)
+- `src/components/` – page sections (Hero, MazeGame, FieldGuide, …)
 - `src/game/` – the bone maze: `maze.ts` (generation + pathfinding), `game.ts` (loop, input, rendering), `content.ts` (planet names, Olly's thoughts)
 - `src/lib/` – shared bits: pixel sprites, 8-bit sound, safe localStorage
 - `src/styles/global.css` – colour tokens and shared classes

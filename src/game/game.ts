@@ -8,7 +8,7 @@ const SPEED = 11;        // cells per second
 const SNIFF_COOLDOWN = 6; // seconds
 const SNIFF_SHOW = 2.4;
 const SIGHT = 2.6;       // cells Olly remembers around him in the dark
-const CONFETTI = ['#ff4fa3', '#3bf0ff', '#b6ff3b', '#ffc94d', '#fff3dc'];
+const CONFETTI = ['#ff8fcf', '#8ff0d0', '#ffe38a', '#c9a7ff', '#fff5fb'];
 
 type State = 'title' | 'play' | 'win';
 interface Olly extends Point { fx: number; fy: number; t: number; flip: boolean; wag: number; step: number; anim: number }
@@ -85,7 +85,7 @@ export function mountMazeGame(root: HTMLElement) {
     }
     olly.fx = olly.x; olly.fy = olly.y;
     olly.x += dx; olly.y += dy; olly.t = 0;
-    if (dx) olly.flip = dx < 0;
+    if (dx) olly.flip = dx > 0; // keep the tail trailing behind him
     timing = true;
     idle = 0;
   }
@@ -233,16 +233,16 @@ export function mountMazeGame(root: HTMLElement) {
   function render(now: number) {
     const W = canvas.width, c = cell(), G = maze.size, hue = (level * 47 + 250) % 360;
     const f = Math.floor, cl = Math.ceil;
-    ctx.fillStyle = '#0a0518';
+    ctx.fillStyle = '#0f0a22';
     ctx.fillRect(0, 0, W, W);
 
     // floor + walls
     for (let y = 0; y < G; y++) for (let x = 0; x < G; x++) {
       const X = f(x * c), Y = f(y * c), w = cl((x + 1) * c) - X, h = cl((y + 1) * c) - Y;
       if (maze.grid[y * G + x]) {
-        ctx.fillStyle = `hsl(${hue} 60% ${22 + ((x * 7 + y * 13) % 5)}%)`;
+        ctx.fillStyle = `hsl(${hue} 45% ${30 + ((x * 7 + y * 13) % 5)}%)`;
         ctx.fillRect(X, Y, w, h);
-        if (!isWall(maze, x, y - 1)) { ctx.fillStyle = `hsl(${hue} 80% 62%)`; ctx.fillRect(X, Y, w, Math.max(2, h * 0.18)); }
+        if (!isWall(maze, x, y - 1)) { ctx.fillStyle = `hsl(${hue} 85% 80%)`; ctx.fillRect(X, Y, w, Math.max(2, h * 0.18)); }
         if ((x * 31 + y * 17) % 11 === 0) {
           const s = Math.max(1, c * 0.08);
           ctx.fillStyle = 'rgba(255,243,220,.6)';
@@ -254,7 +254,7 @@ export function mountMazeGame(root: HTMLElement) {
       }
       if (trail[y * G + x]) { // paw prints
         const s = Math.max(1, c * 0.12);
-        ctx.fillStyle = 'rgba(243,196,122,.28)';
+        ctx.fillStyle = 'rgba(255,245,251,.22)';
         ctx.fillRect(X + c * 0.3, Y + c * 0.35, s, s);
         ctx.fillRect(X + c * 0.55, Y + c * 0.55, s, s);
       }
@@ -263,7 +263,7 @@ export function mountMazeGame(root: HTMLElement) {
     // bone
     const bob = Math.sin(now / 250) * c * 0.08, bs = c / 11;
     ctx.save();
-    ctx.shadowColor = '#ffc94d';
+    ctx.shadowColor = '#ffe38a';
     ctx.shadowBlur = c * 0.6;
     drawBone(ctx, (bone.x + 0.5) * c - (BONE_SIZE.w / 2) * bs, (bone.y + 0.5) * c - (BONE_SIZE.h / 2) * bs + bob, bs);
     ctx.restore();
@@ -271,14 +271,14 @@ export function mountMazeGame(root: HTMLElement) {
     // olly
     const ease = olly.t * (2 - olly.t);
     const ox = (olly.fx + (olly.x - olly.fx) * ease) * c, oy = (olly.fy + (olly.y - olly.fy) * ease) * c;
-    const os = c / 13, hop = olly.t < 1 ? -Math.sin(olly.t * Math.PI) * c * 0.1 : 0;
+    const os = c / 27, hop = olly.t < 1 ? -Math.sin(olly.t * Math.PI) * c * 0.1 : 0;
     drawOlly(ctx, ox + (c - OLLY_SIZE.w * os) / 2, oy + (c - OLLY_SIZE.h * os) / 2 + hop, os, olly);
 
     // fog of war: remembered cells stay dim, a soft light follows Olly
     if (fogOn && state !== 'win') {
       fctx.globalCompositeOperation = 'source-over';
       fctx.clearRect(0, 0, W, W);
-      fctx.fillStyle = 'rgba(6,3,16,.97)';
+      fctx.fillStyle = 'rgba(10,6,24,.97)';
       fctx.fillRect(0, 0, W, W);
       fctx.globalCompositeOperation = 'destination-out';
       fctx.fillStyle = 'rgba(0,0,0,.5)';
@@ -300,7 +300,7 @@ export function mountMazeGame(root: HTMLElement) {
       sniffPath.forEach((p, i) => {
         const x = ((p % G) + 0.5) * c + Math.sin(now / 120 + i) * c * 0.12, y = (((p / G) | 0) + 0.5) * c;
         const s = c * (0.22 - i * 0.008);
-        ctx.fillStyle = `rgba(182,255,59,${a * (1 - (i / sniffPath.length) * 0.7)})`;
+        ctx.fillStyle = `rgba(143,240,208,${a * (1 - (i / sniffPath.length) * 0.7)})`;
         ctx.fillRect(x - s / 2, y - s / 2, s, s);
       });
     }

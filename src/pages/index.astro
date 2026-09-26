@@ -1,22 +1,11 @@
 ---
 import Base from '../layouts/Base.astro';
 import Hero from '../components/Hero.astro';
-import Ticker from '../components/Ticker.astro';
 import MazeGame from '../components/MazeGame.astro';
 import FieldGuide from '../components/FieldGuide.astro';
-
-const news = [
-  'BREAKING: BONE MISSING AGAIN',
-  'OLLY SUSPECTS THE CAT',
-  'CAT DENIES EVERYTHING',
-  'ZOOMIES FORECAST: 100%',
-  'SQUIRREL SIGHTING ON PLANET SQUEAKY UNCONFIRMED',
-  'VACUUM CLEANER STILL AT LARGE',
-];
 ---
 <Base>
   <Hero />
-  <Ticker items={news} />
   <MazeGame />
   <FieldGuide />
 </Base>
