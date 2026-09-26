@@ -2,7 +2,7 @@
 
 # --- build: static site into /app/dist ---------------------------------------
 # the output is plain HTML/CSS/JS, so build once on the runner's own platform
-FROM --platform=$BUILDPLATFORM node:22-alpine AS build
+FROM --platform=$BUILDPLATFORM node:26-alpine AS build
 ENV ASTRO_TELEMETRY_DISABLED=1
 WORKDIR /app
 COPY package.json package-lock.json ./
