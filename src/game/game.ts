@@ -1,7 +1,7 @@
 import { store } from '../lib/storage';
 import { sfx } from '../lib/sound';
 import { drawOlly, drawBone, OLLY_SIZE, BONE_SIZE } from '../lib/sprites';
-import { generateMaze, isWall, openNeighbours, bfs, distances, pathBetween, DIRS, type Dir, type Maze, type Point } from './maze';
+import { generateMaze, isWall, bfs, distances, pathBetween, DIRS, type Dir, type Maze, type Point } from './maze';
 import { roster, newcomer, createEnemy, resetEnemy, moveEnemy, enemyPos, drawEnemy, isStunned, type Enemy } from './enemies';
 import { planetName, pick } from './content';
 import { pageText } from '../i18n/ui';
@@ -53,8 +53,9 @@ export function mountMazeGame(root: HTMLElement) {
   let enemies: Enemy[] = [];
   let chase: Int32Array;    // steps from every cell to Olly, steers the enemies
   let trail: Uint8Array;
-  let held: Dir | null = null;
-  let run: Dir | null = null;
+  let held: Dir | null = null;   // keyboard / pad button held down: walk while held
+  let run: Dir | null = null;    // touch: keep walking until a wall (Pac-Man style)
+  let queued: Dir | null = null; // touch: next turn, taken at the first opening
   let time = 0, timing = false;
   let grace = 0, invulnerable = 0, pause = 0;
   let barkCd = 0, barkT = 0, barkAt: Point = { x: 0, y: 0 };
@@ -93,7 +94,7 @@ export function mountMazeGame(root: HTMLElement) {
     });
 
     chase = fromStart;
-    time = 0; timing = false; held = null; run = null;
+    time = 0; timing = false; held = null; run = null; queued = null;
     grace = GRACE; invulnerable = 0; pause = 0;
     barkCd = 0; barkT = 0;
     sniffCd = 0; sniffT = 0; sniffPath = []; particles = [];
@@ -120,13 +121,38 @@ export function mountMazeGame(root: HTMLElement) {
 
   function arrive() {
     trail[olly.fy * maze.size + olly.fx] = 1;
-    if (olly.x === bone.x && olly.y === bone.y) return win();
+    if (olly.x === bone.x && olly.y === bone.y) win();
+  }
+
+  const canGo = (d: Dir) => !isWall(maze, olly.x + DIRS[d][0], olly.y + DIRS[d][1]);
+
+  /** Called whenever Olly stands on a cell centre. */
+  function nextStep() {
+    if (held) return tryMove(held);
+    if (queued && canGo(queued)) { run = queued; queued = null; }
     if (run) {
-      const [dx, dy] = DIRS[run];
-      // a swipe runs until the corridor ends or branches
-      if (isWall(maze, olly.x + dx, olly.y + dy) || openNeighbours(maze, olly.x, olly.y) > 2) run = null;
+      if (canGo(run)) tryMove(run);
+      else run = null;
     }
   }
+
+  /** Touch input: remember the direction and take it as soon as the maze allows. */
+  function steer(d: Dir) {
+    if (state !== 'play') return;
+    queued = d;
+    const [dx, dy] = DIRS[d];
+    if (olly.t < 1 && olly.x - olly.fx === -dx && olly.y - olly.fy === -dy) {
+      // turning around mid-step: reverse right away
+      [olly.x, olly.fx] = [olly.fx, olly.x];
+      [olly.y, olly.fy] = [olly.fy, olly.y];
+      olly.t = 1 - olly.t;
+      if (dx) olly.flip = dx < 0;
+      chase = distances(maze, olly.x, olly.y);
+      run = d; queued = null;
+    }
+  }
+
+  const buzz = (pattern: number | number[]) => { try { navigator.vibrate?.(pattern); } catch {} };
 
   function burst(x: number, y: number) {
     for (let i = 0; i < 70; i++) {
@@ -136,7 +162,7 @@ export function mountMazeGame(root: HTMLElement) {
   }
 
   function win() {
-    state = 'win'; timing = false; held = null; run = null;
+    state = 'win'; timing = false; held = null; run = null; queued = null;
     bones++;
     store.set('olly.bones', bones);
     store.set('olly.bestPlanet', Math.max(store.get('olly.bestPlanet', 0), level + 1));
@@ -157,8 +183,9 @@ export function mountMazeGame(root: HTMLElement) {
   function caught(e: Enemy) {
     lives--;
     paintLives();
-    held = null; run = null;
+    held = null; run = null; queued = null;
     sfx.caught();
+    buzz([60, 40, 60]);
     const line = T.enemies[e.kind].caught;
     if (lives > 0) {
       say(`${line} ${T.livesLeft(lives)}`);
@@ -193,6 +220,7 @@ export function mountMazeGame(root: HTMLElement) {
       if (Math.hypot(p.x - barkAt.x, p.y - barkAt.y) <= BARK_RADIUS) e.stun = BARK_STUN;
     }
     say(T.barking);
+    buzz(30);
   }
 
   function sniff() {
@@ -209,6 +237,7 @@ export function mountMazeGame(root: HTMLElement) {
     ui.text.innerHTML = html;
     ui.button.textContent = button;
     ui.overlay.hidden = false;
+    root.classList.remove('playing');
   }
 
   function begin() {
@@ -217,6 +246,9 @@ export function mountMazeGame(root: HTMLElement) {
     startLevel();
     ui.overlay.hidden = true;
     state = 'play';
+    root.classList.add('playing');
+    // phones: bring the whole cabinet (maze + controls) into view
+    if (matchMedia('(max-width: 1099px)').matches) root.scrollIntoView({ behavior: 'smooth', block: 'center' });
     say(T.welcome(planet(level)));
     sfx.woof();
   }
@@ -235,7 +267,7 @@ export function mountMazeGame(root: HTMLElement) {
   addEventListener('keydown', e => {
     const d = KEYS[e.code];
     if (state === 'play') {
-      if (d) { e.preventDefault(); held = d; run = null; }
+      if (d) { e.preventDefault(); held = d; run = null; queued = null; }
       else if (e.code === 'Space') { e.preventDefault(); bark(); }
       else if (e.code === 'KeyE') sniff();
     } else if (!ui.overlay.hidden && (e.code === 'Enter' || (e.code === 'Space' && inView()))) {
@@ -252,7 +284,7 @@ export function mountMazeGame(root: HTMLElement) {
       e.preventDefault();
       b.setPointerCapture(e.pointerId);
       b.classList.add('on');
-      if (state === 'play') { held = d; run = null; }
+      if (state === 'play') { held = d; steer(d); }
     });
     const release = () => { b.classList.remove('on'); if (held === d) held = null; };
     b.addEventListener('pointerup', release);
@@ -261,15 +293,15 @@ export function mountMazeGame(root: HTMLElement) {
   root.querySelector('[data-sniff]')?.addEventListener('pointerdown', e => { e.preventDefault(); sniff(); });
   root.querySelector('[data-bark]')?.addEventListener('pointerdown', e => { e.preventDefault(); bark(); });
 
-  // swipe on the maze = run down the corridor until the next junction
+  // on the maze: swipe = steer, tap = bark
   let swipe: Point | null = null;
   canvas.addEventListener('pointerdown', e => { swipe = { x: e.clientX, y: e.clientY }; });
   canvas.addEventListener('pointerup', e => {
     if (!swipe || state !== 'play') return;
     const dx = e.clientX - swipe.x, dy = e.clientY - swipe.y;
     swipe = null;
-    if (Math.max(Math.abs(dx), Math.abs(dy)) < 18) return;
-    run = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < 18) return bark();
+    steer(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up'));
   });
 
   /* ---------- loop ---------- */
@@ -306,10 +338,7 @@ export function mountMazeGame(root: HTMLElement) {
       olly.t = Math.min(1, olly.t + dt * SPEED);
       if (olly.t === 1) arrive();
     }
-    if (olly.t === 1 && state === 'play') {
-      const d = held ?? run;
-      if (d) tryMove(d);
-    }
+    if (olly.t === 1 && state === 'play') nextStep();
     if (state !== 'play') return;
 
     const me = ollyPos();

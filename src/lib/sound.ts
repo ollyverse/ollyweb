@@ -13,6 +13,7 @@ function tone(freq: number, dur: number, type: OscillatorType = 'square', vol = 
   if (muted) return;
   try {
     actx ??= new AudioContext();
+    if (actx.state === 'suspended') void actx.resume(); // iOS starts audio suspended
     const t0 = actx.currentTime + delay;
     const o = actx.createOscillator();
     const g = actx.createGain();
