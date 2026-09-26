@@ -40,7 +40,7 @@ export function mountMazeGame(root: HTMLElement) {
   const canvas = ref<HTMLCanvasElement>('canvas');
   const ctx = canvas.getContext('2d')!;
   const ui = {
-    overlay: ref('overlay'), title: ref('overlay-title'), text: ref('overlay-text'), button: ref<HTMLButtonElement>('overlay-button'),
+    overlay: ref('overlay'), title: ref('overlay-title'), text: ref('overlay-text'), abilities: ref('abilities'), button: ref<HTMLButtonElement>('overlay-button'),
     level: ref('level'), lives: ref('lives'), bark: ref('bark'), barkMeter: ref('bark-meter'), sniff: ref('sniff'), sniffMeter: ref('sniff-meter'), thought: ref('thought'),
   };
 
@@ -233,6 +233,7 @@ export function mountMazeGame(root: HTMLElement) {
   }
 
   function showOverlay(title: string, html: string, button: string) {
+    ui.abilities.hidden = true; // only the intro screen explains the abilities
     ui.title.textContent = title;
     ui.text.innerHTML = html;
     ui.button.textContent = button;

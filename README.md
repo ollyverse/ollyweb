@@ -75,25 +75,33 @@ Published images live in the **GitHub Container Registry**:
 docker pull ghcr.io/ollyverse/ollyweb:latest
 ```
 
-| Tag | When |
+Images are pushed **only for release tags** — they are what the Kubernetes deployment pulls:
+
+```sh
+git tag v1.0.0 && git push origin v1.0.0
+```
+
+| Git tag | Image tags |
 |---|---|
-| `latest`, `main` | every push to `main` |
-| `1.2.3`, `1.2` | pushing a git tag `v1.2.3` |
-| `sha-<short>` | every published build |
-| `pr-<n>` | built for pull requests, never pushed |
+| `v1.2.3` | `1.2.3`, `1.2`, `1`, `latest` |
+| pull request | built as `pr-<n>` to check the Dockerfile, never pushed |
 
 The repository is private, so the package is private too; pulling needs `docker login ghcr.io`
 with a token that has `read:packages`. Images are built for `linux/amd64` and `linux/arm64`.
+
+In Kubernetes, pin the exact version (`ghcr.io/ollyverse/ollyweb:1.2.3`) rather than `latest`, and give the
+pods an `imagePullSecret` for ghcr.io (a token with `read:packages`) since the package is private.
+The container listens on **8080**; `/` answers `200` and works for liveness/readiness probes.
 
 ## CI/CD (GitHub Actions)
 
 | Workflow | Trigger | Does |
 |---|---|---|
 | `ci.yml` | push to `main`, PRs | `npm ci`, `astro check`, `astro build` |
-| `image.yml` | push to `main`, `v*` tags, PRs, manual | builds the multi-arch image; pushes to ghcr.io except for PRs |
+| `image.yml` | `v*` tags, PRs | builds the multi-arch image; pushes to ghcr.io only for `v*` tags |
 | `pages.yml` | push to `main`, manual | deploys `dist/` to GitHub Pages — **off by default**, see below |
 
-**Dependabot** (`.github/dependabot.yml`) opens weekly PRs on Mondays for npm packages
+**Dependabot** (`.github/dependabot.yml`) checks daily and opens PRs for npm packages
 (Astro packages grouped, dev tools grouped), GitHub Actions and the Docker base images.
 
 ### Turning on GitHub Pages (optional)
