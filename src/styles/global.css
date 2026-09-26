@@ -1,0 +1,33 @@
+:root {
+  --bg: #140a2e;
+  --bg-deep: #0a0518;
+  --ink: #fff3dc;
+  --muted: #b7a6e0;
+  --pink: #ff4fa3;
+  --cyan: #3bf0ff;
+  --lime: #b6ff3b;
+  --gold: #ffc94d;
+  --panel: #1f1147;
+  --pixel: "Press Start 2P", monospace;
+  --display: "Bungee", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: radial-gradient(ellipse at 50% -10%, #3a1a7a 0%, var(--bg) 45%, var(--bg-deep) 100%) fixed;
+  background-color: var(--bg);
+  color: var(--ink);
+  font-family: "Space Grotesk", system-ui, sans-serif;
+  overflow-x: hidden;
+}
+main, header, footer { position: relative; z-index: 1; }
+
+/* shared building blocks */
+.section-title { font-family: var(--display); font-size: clamp(22px, 4vw, 34px); text-align: center; margin: 0 0 8px; color: var(--cyan); }
+.section-sub { text-align: center; color: var(--muted); margin: 0 0 28px; }
+.btn {
+  justify-self: center; font-family: var(--pixel); font-size: 12px; cursor: pointer; border: 0;
+  color: var(--bg); background: var(--lime); padding: 14px 18px; box-shadow: 4px 4px 0 var(--pink);
+}
+.btn:active { transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--pink); }

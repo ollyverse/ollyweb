@@ -1,0 +1,89 @@
+---
+const dirs = [
+  { dir: 'up', label: '▲' },
+  { dir: 'left', label: '◀' },
+  { dir: 'down', label: '▼' },
+  { dir: 'right', label: '▶' },
+];
+---
+<section class="game-wrap" id="play">
+  <h2 class="section-title">OPERATION: BONE</h2>
+  <p class="section-sub">Every planet is a maze. Every maze has a bone. Every bone is Olly's.</p>
+
+  <div class="cabinet" data-maze-game>
+    <div class="hud">
+      <div><small>PLANET</small><b data-ref="level">1</b></div>
+      <div><small>TIME</small><b data-ref="time">0.0</b></div>
+      <div><small>BONES</small><b data-ref="bones">0</b></div>
+      <div><small>SNIFF</small><b data-ref="sniff">READY</b><span class="meter" data-ref="sniff-meter"></span></div>
+    </div>
+
+    <div class="screen">
+      <canvas data-ref="canvas"></canvas>
+      <div class="overlay" data-ref="overlay">
+        <h3 data-ref="overlay-title">FIND THE BONE</h3>
+        <p data-ref="overlay-text">Guide Olly through the maze.<br />Stuck? <b>Sniff</b> to follow the smell.</p>
+        <button class="btn" data-ref="overlay-button">▶ LET'S GO</button>
+      </div>
+    </div>
+
+    <div class="thought" data-ref="thought">…bone?</div>
+
+    <div class="pad">
+      {dirs.map(d => <button class={d.dir} data-dir={d.dir} aria-label={d.dir}>{d.label}</button>)}
+      <button class="sniff" data-sniff aria-label="Sniff">SNIFF</button>
+    </div>
+    <div class="keys"><kbd>←↑↓→</kbd> / <kbd>WASD</kbd> move &nbsp; <kbd>SPACE</kbd> sniff &nbsp; <kbd>ENTER</kbd> start</div>
+  </div>
+</section>
+
+<style>
+  .game-wrap { padding: 72px 16px 40px; }
+  .cabinet {
+    max-width: 600px; margin: 0 auto; background: var(--panel); padding: 14px;
+    border: 4px solid var(--ink); box-shadow: 8px 8px 0 var(--cyan), -8px -8px 0 var(--pink);
+  }
+  .hud { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; font-family: var(--pixel); font-size: 10px; margin-bottom: 10px; }
+  .hud div { background: var(--bg-deep); padding: 8px 6px; text-align: center; line-height: 1.7; }
+  .hud small { display: block; color: var(--muted); font-size: 8px; }
+  .hud b { color: var(--gold); font-weight: 400; }
+  .meter { display: block; width: 100%; height: 4px; background: var(--lime); margin-top: 4px; transition: width .1s linear; }
+
+  .screen { position: relative; aspect-ratio: 1; background: var(--bg-deep); }
+  canvas { width: 100%; height: 100%; display: block; touch-action: none; image-rendering: pixelated; }
+  .overlay {
+    position: absolute; inset: 0; display: grid; place-content: center; text-align: center; gap: 14px; padding: 20px;
+    background: rgba(10, 5, 24, .82); backdrop-filter: blur(2px);
+  }
+  .overlay[hidden] { display: none; }
+  h3 { font-family: var(--display); font-size: clamp(28px, 7vw, 48px); margin: 0; color: var(--gold); text-shadow: 3px 3px 0 var(--pink); }
+  .overlay p { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.5; }
+  /* overlay text is set via innerHTML, so its <b> tags don't carry the scope attribute */
+  .overlay p :global(b) { color: var(--ink); }
+  .thought { font-family: var(--pixel); font-size: 10px; color: var(--lime); min-height: 30px; margin: 12px 4px 0; line-height: 1.6; }
+  .thought::before { content: "OLLY> "; color: var(--pink); }
+
+  .pad { display: none; margin-top: 12px; grid-template-columns: repeat(3, 64px); grid-template-rows: repeat(2, 56px); gap: 6px; justify-content: center; }
+  .pad button {
+    font-family: var(--pixel); font-size: 16px; color: var(--ink); background: var(--bg-deep); cursor: pointer;
+    border: 3px solid var(--muted); touch-action: none; user-select: none; -webkit-user-select: none;
+  }
+  .pad button:active, .pad button.on { background: var(--pink); color: var(--bg); }
+  .pad .up { grid-column: 2; grid-row: 1; }
+  .pad .sniff { grid-column: 3; grid-row: 1; font-size: 9px; color: var(--lime); border-color: var(--lime); }
+  .pad .left { grid-column: 1; grid-row: 2; }
+  .pad .down { grid-column: 2; grid-row: 2; }
+  .pad .right { grid-column: 3; grid-row: 2; }
+  .keys { text-align: center; font-family: var(--pixel); font-size: 9px; color: var(--muted); margin-top: 14px; line-height: 2; }
+  kbd { color: var(--bg); background: var(--muted); padding: 2px 5px; font: inherit; }
+  @media (pointer: coarse), (max-width: 700px) {
+    .pad { display: grid; }
+    .keys { display: none; }
+  }
+</style>
+
+<script>
+  import { mountMazeGame } from '../game/game';
+
+  document.querySelectorAll<HTMLElement>('[data-maze-game]').forEach(mountMazeGame);
+</script>

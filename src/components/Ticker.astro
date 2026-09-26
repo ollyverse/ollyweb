@@ -1,0 +1,12 @@
+---
+interface Props { items: string[] }
+const line = Astro.props.items.join(' ✦ ') + ' ✦ ';
+---
+<div class="ticker" aria-hidden="true"><div>{line}{line}</div></div>
+
+<style>
+  .ticker { background: var(--pink); color: var(--bg); overflow: hidden; transform: rotate(-1.5deg); margin: 0 -20px; border-block: 3px solid var(--bg-deep); }
+  .ticker > div { display: inline-block; white-space: nowrap; font-family: var(--pixel); font-size: 12px; padding: 12px 0; animation: scroll 28s linear infinite; }
+  @keyframes scroll { to { transform: translateX(-50%); } }
+  @media (prefers-reduced-motion: reduce) { .ticker > div { animation: none; } }
+</style>

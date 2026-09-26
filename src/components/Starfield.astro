@@ -1,0 +1,37 @@
+<canvas id="stars" aria-hidden="true"></canvas>
+
+<style>
+  #stars { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+</style>
+
+<script>
+  const c = document.getElementById('stars') as HTMLCanvasElement;
+  const x = c.getContext('2d')!;
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let W = 0, H = 0;
+  let stars: { x: number; y: number; z: number; t: number }[] = [];
+
+  function resize() {
+    W = c.width = innerWidth;
+    H = c.height = innerHeight;
+    stars = Array.from({ length: Math.round((W * H) / 4500) }, () => ({
+      x: Math.random() * W, y: Math.random() * H, z: Math.random() * 0.8 + 0.2, t: Math.random() * 6,
+    }));
+  }
+
+  function frame(t: number) {
+    x.clearRect(0, 0, W, H);
+    for (const s of stars) {
+      const y = (((s.y - scrollY * s.z * 0.35) % H) + H) % H; // parallax on scroll
+      const a = still ? 0.8 : 0.35 + 0.65 * Math.abs(Math.sin(t / 900 + s.t));
+      x.fillStyle = `rgba(255,243,220,${a * s.z})`;
+      const size = s.z > 0.85 ? 2 : 1;
+      x.fillRect(s.x | 0, y | 0, size, size);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  resize();
+  addEventListener('resize', resize);
+  requestAnimationFrame(frame);
+</script>
