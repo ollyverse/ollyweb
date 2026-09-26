@@ -11,7 +11,7 @@ const en = {
   header: { soundOn: '♪ ON', soundOff: '♪ OFF', soundLabel: 'Toggle sound', langLabel: 'Language' },
   hero: {
     kicker: '✦ WELCOME TO THE ✦',
-    sub: 'A tiny universe run by <b>one very fluffy, very black Pomeranian</b>.<br />He lost his bone. Again. Somewhere between planets.',
+    sub: 'A tiny universe run by <b>one very fluffy, very black Olly</b>.<br />He lost his bone. Again. Somewhere between planets.',
     boop: 'Boop the dog',
     cta: '▶ PRESS START',
     tiny: '(psst — boop Olly first)',
@@ -69,7 +69,7 @@ const sk: typeof en = {
   header: { soundOn: '♪ ZAP', soundOff: '♪ VYP', soundLabel: 'Zapnúť/vypnúť zvuk', langLabel: 'Jazyk' },
   hero: {
     kicker: '✦ VITAJ V ✦',
-    sub: 'Malý vesmír, ktorému vládne <b>jeden veľmi chlpatý, veľmi čierny pomeranian</b>.<br />Stratil kostičku. Zase. Niekde medzi planétami.',
+    sub: 'Malý vesmír, ktorému vládne <b>jeden veľmi chlpatý, veľmi čierny Olly</b>.<br />Stratil kostičku. Zase. Niekde medzi planétami.',
     boop: 'Pohladkaj psíka',
     cta: '▶ ŠTART',
     tiny: '(pssst — najprv pohladkaj Ollyho)',

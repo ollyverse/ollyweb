@@ -4,7 +4,7 @@ const PAL: Record<string, string> = {
   k: '#221c30', // fur
   d: '#2d2540', // fur, lit
   g: '#463c61', // plume, face
-  m: '#52476e', // muzzle
+  m: '#5e5380', // muzzle
   h: '#8f7fc0', // fluff tips, mane
   e: '#05030a', // eye
   w: '#ffffff', // eye shine
@@ -16,31 +16,31 @@ const OUTLINE = '#fff3fb';
 
 // cols 0-9 of rows 0-3 hold the tail plume and come from TAIL instead
 const OLLY = [
-  '.............h....h...',
-  '............kpk..kpk..',
-  '...........kkppkkppkk.',
-  '..........kdddddddddk.',
-  'hgdkgkdgh.kddddddddgk.',
-  '.hgdkdkdgkkddddewggmmm',
-  '..hgdkdkdkhddddeeggmmn',
-  '...hdkkkkkhdgppggmmmt.',
-  '..kkkkkkkkdhdggggmmt..',
-  '.kkkkkkkkkkdhgdghh....',
-  'hkkkkkkkkkkkdhdhgh....',
-  'hkkkkkkkkkkkkdhh......',
-  'hdkkkkkkkkkkkkh.......',
+  '.............h...h....',
+  '............kpk.kpk...',
+  '...........kkppkppkk..',
+  '..........kddddddddk..',
+  'hgdkkkkdgkkddddggdddk.',
+  '.hdkkkkkdkgddddewgggm.',
+  '..hdkkkkkkgdddgeegmmmn',
+  '..kdddkkkkggdgppggmmt.',
+  '.kddkkkkkkgghdggggmt..',
+  'hkdkkkkkkkkgghdghh....',
+  'hkkkkkkkkkkkgdghh.....',
+  'hkkkkkkkkkkkkgdh......',
+  'hdkkkkkkkkkkkdh.......',
   '.hdkkkkkkkkkkdh.......',
   '..hdhdkkkkhdhdh.......',
 ];
 const TAIL_W = 10;
 const EYES_ROW = 5;
 const TAIL = [
-  ['...hhh....', '..hgggh...', '.hgggggh..', 'hggdgdggh.'],
-  ['....hhh...', '...hgggh..', '..hgggggh.', '.hggdgdggh'],
+  ['...hhhh...', '..hggggh..', '.hgdddggh.', 'hgddkkddgh'],
+  ['....hhhh..', '...hggggh.', '..hgdddggh', '.hgddkkddg'],
 ];
 const LEGS = [
   ['...kd.kd...kd.kd......', '...kg.kg...kg.kg......'],
-  ['..kd..kd..kd..kd......', '..kg..kg..kg..kg......'],
+  ['..kd..kd...kd..kd.....', '..kg..kg...kg..kg.....'],
 ];
 const BONE = ['ww.....ww', 'wwwwwwwww', '.wwwwwww.', 'wwwwwwwww', 'ww.....ww'];
 
